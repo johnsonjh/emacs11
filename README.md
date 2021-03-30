@@ -1,6 +1,6 @@
 # EMACS-11
 
-* An **EMACS** command-compatible editor for *PDP/RSX* and *VAX/VMS* systems with *TECO* version 35 (or later).
+An **EMACS** command-compatible editor for *PDP/RSX* and *VAX/VMS* systems with *TECO* version 35 (or later).
 
 ---
 
