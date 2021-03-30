@@ -1,8 +1,12 @@
 # EMACS-11
 
+---
+
 ## Overview
 
 - Well folks, you asked for it and here it is.  Unfortunately, it has been a couple years since I used any of this stuff, so I'm a little rusty about what the various pieces are.  The following represents my best guess, going from memory, and looking at some of the pieces.
+
+---
 
 ## Distribution
 
@@ -36,6 +40,8 @@ File | Size | Usage
 `teco.tec` | 4,915 | Compacted form of `emacs11.tec`.
 `tioasm.cmd` | 497 | Another mysterious command file.
 
+---
+
 ## Notes
 
 - Some possibly helpful hints.
@@ -50,9 +56,13 @@ File | Size | Usage
 
   - Note that there are a couple embedded *ESCAPE* characters near the end of the macro source files `emacs11.tec` and `emacs.src`.
 
-## Conclusiom
+---
+
+## Conclusion
 
 **_HAVE FUN AND GOOD LUCK_.**
+
+---
 
 ## Author
 
@@ -62,3 +72,5 @@ UniSoft Systems, Inc.,
 Berkeley, CA
 1-415-644-1230 Ext. 242
 ```
+
+---
