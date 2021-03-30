@@ -1,0 +1,379 @@
+                          Instructions Summary
+			  --------------------
+
+Pointer movement cmds:
+---------------------
+
+  ^A	   =>	Go to beginning of current line.
+
+  ^B	   =>	Go back one character.
+
+  ^E       =>	Go to end of line.
+
+  ^F	   =>	Go forward one character.
+
+  ^N	   =>	Go to same place in next line.
+
+  ^P	   =>	Go to same place in previous line.
+
+  ^V	   =>	Move window down.
+
+  ESC A    =>	Go backward to start of sentence.
+		[Not yet implemented]
+
+  ESC B	   =>	Go back one word.
+
+  ESC E    =>	Go forward to start of next sentence.
+		[Not yet implemented]
+
+  ESC F	   =>	Go forward one word.
+
+  ESC G    =>	Go to specified line number in current buffer.
+		(precede command with line number as ESC)
+
+  ESC V	   =>	Move window up.
+
+  ESC [    =>	Go to beginning of paragraph.
+		[Not yet implemented]
+
+  ESC ]    =>	Go to end of paragraph.
+		[Not yet implemented]
+
+  ESC <	   =>	Go to beginning of buffer.
+
+  ESC >	   =>	Go to end of buffer.
+
+  ^X ^X	   =>	Exchange mark and pointer
+
+  ^X =     =>	Displays information about current position in
+		buffer.
+                    Instructions Summary (cont).
+		    ----------------------------
+  
+Buffer page commands
+--------------------
+
+
+  ESC N	   =>	Write current buffer to output file, clear buffer,
+		and read in next page from input file.
+
+  ^X  A    =>	Append next page to buffer. Inserts form feed if
+		last read found a form feed.
+
+  ^X ^N    =>	Write all text in buffer above the current window
+		to the output file and read in next page from
+		input file.  (Useful for editing near page boundries.)
+
+  ^X  N    =>	Same as ^X ^N but does not read in next page.  Useful
+		for making some room in the buffer.
+                    Instructions Summary (cont).
+		    ----------------------------
+  
+
+Search commands:
+----------------
+
+  ^S	   =>	Incremental forward search.  Searches for string
+		as each character is input.  Can only be exited with:
+
+		(1) ESC to signify stay at current location after
+		    string found.
+
+		(2) ^G to abort and return to original location.
+
+		Notes:	1. "DELETE" removes characters from search
+			    string.
+			2.  When search string is null (empty) a 2nd
+			    ^S within a search operation uses the most
+			    recent successful search string.
+			3.  A 2nd ^S  at any other time within a search
+			    operation finds the next occurance of the 
+			    current search string.
+
+  ^R        =>	Incremental reverse search.  Same as ^S except search
+		progresses backwards.  Leaves pointer at beginning of
+		string found.
+		[Not yet implemented]
+
+
+  ESC X O   =>	"Occurances".  Display all lines containing a specified
+		string.
+
+                    Instructions Summary (cont).
+		    ----------------------------
+
+Kill and delete commands:
+-------------------------
+
+   Kill operations either initialize the kill buffer with the removed
+   text, or append the removed text to the current kill buffer contents,
+   depending upon whether or not the pointer has moved since the last
+   kill operation.  (appends if hasn't moved)
+
+   Delete operations remove the affected text and discard it.
+
+
+  ^D	   =>	Delete next character.
+
+  ^K	   =>	Kill to end of line / kill line terminator.
+
+  ^W	   =>	Kill marked region.
+
+  ^Y	   =>	Yank back last kill.  (insert text stored in kill buffer)
+
+  ESC D    =>	Delete next word.  
+		[Not yet implemented]
+
+  ESC K    =>	Kill to end of sentence.
+		[Not yet implemented]
+
+  ESC W	   =>	Copy region between mark and pointer to kill buffer,
+		superceding existing text.
+
+  ESC Y    =>	If used immediately after ^Y replaces the text just
+		"unkilled" with the text that was the 2nd most recent
+		victim.
+		[Not yet implemented]
+
+  ESC ^Y   =>	Yanks (pulls) last defined TECO command into text
+		buffer.
+
+  ESC ^W   =>	Append next kill to text already in kill buffer (if any).
+		(nullified by any pointer movement or text insertion)
+
+  ^X ^O    =>	Delete blank lines from current pointer to next non-blank
+		line.
+		[Not yet implemented]
+
+  ^X #     =>	Kill backwards to start of sentence.
+		[Not yet implemented]
+
+  "DELETE" =>	Delete character before pointer.
+    KEY
+                    Instructions Summary (cont).
+		    ----------------------------
+
+  
+TECO related cmds:
+------------------
+
+
+  ESC ESC  =>	Enter TECO commands.  Terminate with double ESC or
+		abort with ^G.
+
+  MI ESC ESC =>	Restart EMACS from TECO level.
+
+  ESC ^Y   =>	Insert last defined TECO command into text buffer.
+
+  ESC Z    =>	Return to TECO level. (can restart EMACS with MI$$)
+
+  ESC *    =>	View last TECO command
+
+  ^X ESC   =>	Re-execute TECO command most recently entered with
+		ESC ESC command.
+
+
+
+
+                    Instructions Summary (cont).
+		    ----------------------------
+
+  
+
+Miscellaneous cmds:
+-------------------
+
+  ^C	   =>	Return to TECO level.  (can restart EMACS with MI$$)
+
+  ^G	   =>	*** THIS IS THE PANIC BUTTON ***
+		Gets you out of almost anything as long as EMACS is
+		not "hung".
+
+  ^O	   =>	Open blank line for insertion.
+
+  ^Q	   =>	Use next character as text.  (inserts cmds as text)
+
+  ESC S    =>	Center text in current line.  Uses a default of
+		80 characters per line or can be preceded with
+		an argument of form ESC which defines
+		number of characters in line.
+		[Not yet implemented]
+
+  ESC T    =>	Exchange words before and after pointer (does
+		nothing if pointer is inside a word).
+		[Not yet implemented]
+
+  ESC %    =>	"Query replace" --- Prompt for search string and its
+		replacement, then from current pointer to end of file,
+		find string and query user as follows:
+		(1) Space bar: go ahead and replace this occurance.
+		(2) ^G : abort query replace.
+		(3) Any other key: don't replace, find next.
+
+  ^X I     =>	Insert file at current pointer position.  First executes
+		a ^X ^N to make room in the buffer.
+		[Not yet implemented]
+
+  ESC X C  =>	Enter/exit "see-all" mode (shows ALL char in a file,
+		even non-printing ones, with special graphics)
+
+  ESC X D  =>	Insert current date in text buffer in form  MM-DD-YR
+
+  ESC X R  =>	"Replace" --- Prompt for search string and its
+		replacement, then from current pointer to end of buffer,
+		replace all occurances.
+
+  ESC X T  =>	Insert current time in text buffer in form  HH:MM:SS
+
+  ^_       =>	"Help on tap" --- Interactive help processor.
+		[Not yet implemented]
+
+  ESC ?    =>	"Describe" --- Describe function of next command
+		without executing it.
+		[Not yet implemented]
+                    Instructions Summary (cont).
+		    ----------------------------
+
+File related commands:
+----------------------
+
+  ^X-^R	   =>	"Read file"
+		Reads in first page of a given file after closing the
+		currently open file (if any).
+
+  ^X-^S    =>	"Save file"
+		Writes buffer and rest of currently open input file to
+		currently open output file, closes and reopens file, and
+		reads first page back in.
+
+  ^X-^V	   =>	"Visit file"
+		Opens a given file for both input and output after closing
+		the currently open output file (if any).
+
+  ^X-^W	   =>	"Write file"
+		Sets output file to that specified, after closing any
+		currently open output file (if any).
+
+  ^Z-^F	   =>	"Get file name"
+		Insert most recently specified output filename into text
+		buffer.
+
+  ^Z-^Z	   =>	"Close files and exit"
+		Close all files and exit EMACS.
+                    Instructions Summary (cont).
+		    ----------------------------
+
+
+
+Keyboard macro cmds:
+--------------------
+
+  ^X (	   =>	Start EMACS macro collection.
+
+  ^X )	   =>	Terminate EMACS macro collection.
+
+  ^X-*     =>	"View last macro" --- Clears screen and displays
+		last defined EMACS macro.  Pressing any key returns
+		to edit mode.  Note some "commands" such as CRLF
+		are displayed in image mode.  This is built into TECO.
+
+  ^X T     =>	"Toggle update" --- Forces screen update at current
+		command inside a macro.  Useful for verifying macro
+		is executing properly by viewing results at specific
+		points, buts slows down execution considerably.
+
+  ^X E	   =>   Execute most recently collected EMACS macro.
+
+  ^X Q	   =>	When used inside a macro halts execution and waits for
+		the user to either:
+		(1) press space bar to continue with current macro.
+		(2) use ^G to abort this macro and all macro repeats
+		    pending.
+		(2) press any other key to exit current macro, without
+		    effecting any pending macro repeats.
+
+  ESC X S  =>	"Save macro" --- Saves current EMACS macro in a specified
+		file.  Prompts for file name.
+		[Not yet implemented]
+
+  ESC X L  =>	"Load macro" --- Loads EMACS macro from a specified file.
+		Prompts for file name.
+		[Not yet implemented]
+
+                    Instructions Summary (cont).
+		    ----------------------------
+
+
+The "mark" and region cmds:
+---------------------------
+
+
+  ESC H    =>	Mark paragraph.  Puts mark at beginning of paragraph,
+		pointer at end.
+		[Not yet implemented]
+
+  ^X ^P    =>	Mark page ---  Put mark at top of page, defined to be
+		immediately after first form feed backwards from
+		current pointer, or top of buffer, whichever is first.
+		Put pointer at bottom of page, defined to be immediately
+		after next form feed forwards from current pointer, or
+		bottom of buffer, whichever is first.
+		[Not yet implemented]
+
+  ^X ^X    =>	Exchange mark and pointer; useful to verify where
+		current region is.
+
+  ESC @    =>	Set mark at current pointer (is EMACS ^@).
+
+  ESC X A  =>	Append currently defined region to an existing file.
+		Prompts for file name.
+		[Not yet implemented]
+
+  ESC X P  =>	Prepend currently defined region to an existing file.
+		Prompts for file name.
+		[Not yet implemented]
+
+  ESC X W  =>	Write currently defined region to a new file.  Prompts
+		for file name.
+		[Not yet implemented]
+
+
+                    Instructions Summary (cont).
+		    ----------------------------
+
+
+Case conversion cmds:
+---------------------
+
+
+   ESC C    =>	Capitalize next word.
+		[Not yet implemented]
+
+   ESC L    =>	Lower case next word.
+		[Not yet implemented]
+
+   ESC U    =>	Upper case next word.
+		[Not yet implemented]
+
+   ^X ^L    =>	Lower case marked region.
+
+   ^X ^U    =>	Upper case marked region.
+
+                    Instructions Summary (cont).
+		    ----------------------------
+
+
+
+Misc. notes:
+------------
+
+   1.	Most commands can be preceded with a repeat count of the form
+	ESC.  Even "commands" which are self-insertions, I.E.
+	ESC20H inserts 20 "H"s in text buffer.
+
+   2.   Commands which "view information" (such as ESC X O  or ^X =)
+	wait for the user to press any key and then return the screen
+	to its normal window mode into the text buffer.  The character
+	input by the single key stroke is discarded.  The text buffer
+	is not affected by the view operation.
+

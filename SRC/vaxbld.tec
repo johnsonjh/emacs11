@@ -1,0 +1,96 @@
+!  VAXBLD.TEC --- TECO command file to strip the [FISH.EMACS]EMACS.SRC !
+!                   File of all extraneous characters such as !
+!                   comments, blanks, tabs, and CRLF's.  This !
+!                   results in TECO macro file called  !
+!                   [FISH.EMACS]EMACS.TEC which is of minimum possible size. !
+
+!  NOTE:  This file contains two non-printing characters; !
+!         a pair of ESC's at the end !
+
+1^_&ED#2ED                 ! ^ means control in searchs; no yank prot !
+ET#64ET                    ! Run in detached mode !
+@ER/[FISH.EMACS]EMACS.SRC/           ! Open source file !
+@EW/[FISH.EMACS]EMACS.TEC/              ! Open destination file !
+@_/!* START !/             ! Find the code start point !
+0L
+K
+@^UI|
+  A
+  <
+    .UB
+    @^A%Removing comments%
+    13^T
+    10^T
+    <
+      @:S/!*/
+      ;
+      2R
+      K
+    > 
+    QBJ
+    @^A%Replacing CRLFs with blanks%
+    13^T
+    10^T
+    <
+      @:S/^EL/
+      ;
+      -1A-10"E
+        -2D
+        @I/ /
+      '
+    >
+    QBJ
+    @^A%Compressing blanks and tabs%
+    13^T
+    10^T
+    <
+      @:FS/^ES/ /
+      ;
+    >
+    QBJ
+    @^A%Restructuring lines%
+    13^T
+    10^T
+    <
+      Z-.-80U2
+      Q2"G
+        80C
+        @:-FS/ //
+        ;
+        13@I//
+        10@I//
+      '
+      -Q2;
+    >    
+    ^N"N
+      @^A%EOF found%
+      13^T
+      10^T
+      0;
+    '
+    @^A%Getting next page%
+    13^T
+    10^T
+    A
+  >
+|
+MI
+EC
+@EB/[FISH.EMACS]EMACS.TEC/
+MI
+J
+@^A%Final blank compression%
+13^T
+10^T
+<
+  @:FS/ //
+  ;
+>
+1ET
+27^T
+7^T
+@^A% Done !!!%
+13^T
+10^T
+EX
+                         ! Close files and exit ! 

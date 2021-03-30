@@ -1,0 +1,32 @@
+Relay-Version: version B 2.10 5/3/83; site utzoo.UUCP
+Posting-Version: version B 2.10.1 6/24/83; site unisoft.UUCP
+Path: utzoo!linus!decvax!decwrl!amd!dual!unisoft!fnf
+From: fnf@unisoft.UUCP (fred fish)
+Newsgroups: net.emacs
+Subject: Emacs subset (In TECO)
+Message-ID: <358@unisoft.UUCP>
+Date: Thu, 8-Nov-84 00:44:11 EST
+Article-I.D.: unisoft.358
+Posted: Thu Nov  8 00:44:11 1984
+Date-Received: Sat, 10-Nov-84 03:39:47 EST
+Organization: UniSoft Corp., Berkeley
+Lines: 18
+
+About two years ago while working on small PDP-11 systems
+running RSX11-M, I had occasion to write a EMACS subset editor
+in TECO-11 macros (mostly as an exercise in TECO macros that
+got out of hand).  Anyway, most of the commonly used commands
+are supported and only slight (about 10 lines of code) changes
+are required to the TECO source code itself, mostly having to
+do with where to look for startup files.  It is also small enough
+to run on a PDP-11/23 (by yourself!!!).
+
+If there is any interest, I can whip up a distribution tape
+including the TECO source (in MACRO-11), documentation for
+both TECO and EMACS-11, and some other misc stuff.  I imagine
+that the whole package is probably a little too large to consider
+posting to net.sources, although the macro package itself might
+be appropriate.
+
+Anyway, if anyone has any comments or suggestions, send mail
+and I'll see what I can do.

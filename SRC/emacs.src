@@ -1,0 +1,1471 @@
+	EMACS.SRC	---	EMACS command compatable editor for	
+				PDP-11 and VAX systems which have
+				TECO, version 35 or later.
+
+	Written by:		Fred Fish
+
+        Last modified:		16:41:18 06-17-82 by Fred Fish
+									
+
+	Q register usage:						
+									
+		Note:	For each Q register number there are TWO	
+			storage areas, one for numeric data and one for 
+			text.  They are refered to here as QnN and	
+			QnT respectively, where "n" is the Q register	
+			number.						
+									
+			In general, low alphabetic Q registers are	
+			used for local storage and high alphabetic	
+			Q registers are used for global storage and	
+			macros.						
+									
+									
+		QMN  =>	Marked location pointer.  Contains numeric 	
+			  pointer to last character location at which	
+			  a mark was set.				
+									
+		QNN  =>	Current pointer save.				
+									
+		QON  =>	Repeat count.  For commands which support using	
+			  a repeat count preceding the command of the	
+			  form , the count is stored in	
+			  this register.				
+									
+		QQN  => Abort back to highest level if set to 0		
+									
+		QWN  =>	Last column number of a ^N or ^P command
+
+		QTN  =>	Current command character ascii value		
+									
+		QXN  => Macro repeat count				
+									
+		QYN  => Emacs macro command fetch down counter		
+									
+		QZN  =>	Control flags word				
+									
+		QHT  => Macro to move cursor to a given line,
+			erase that line, leave cursor at beginning
+			of that line, and make TECO forget it did
+			anything to screen.
+
+		QIT  => Contains most of the run time macros which
+			make up the specific commands for EMACS.
+			Overwrite this and you've wiped out the
+			editor!
+
+		QKT  =>	Primary input file full file-spec
+
+		QLT  =>	Search prompt.					
+									
+		QMT  =>	Contains terminal image mode macro.		
+									
+		QNT  =>	Contains string input macro			
+									
+		QOT  =>	Editor status line update macro
+
+		QPT  => Macro to get next character from terminal	
+									
+		QQT  =>	TECO command minibuffer. 			
+									
+		QRT  =>	Macro to find screen line number as num arg	
+									
+		QST  =>	String fetched by prompt/string input macro	
+									
+		QTT  =>	Output filespec for currently open output file	
+									
+		QUT  =>	Macro to allow option of saving modified 	
+			buffer when no output file is open.		
+									
+		QVT  => Last successful EMACS search string		
+									
+		QWT  =>	Emacs macro command string			
+									
+		QXT  => Macro to fetch next command from terminal	
+			stream or EMACS macro stream (calls QPT macro)	
+									
+		QYT  =>	Kill buffer 2 (contains next most recent kill)	
+									
+		QZT  =>	Kill buffer 1 (contains most recent kill)	
+									
+	LABEL POINTS:							
+									
+		A   =>							
+									
+		B   =>							
+									
+		F   =>							
+									
+		M   =>	^N and ^P common processing point.		
+									
+		QR  =>	Query replace / replace common processing	
+									
+		S   =>	Search execution start point			
+									
+		X   =>	Start point for ^X macros.			
+									
+		$   =>	Start point for ESC- macros.			
+									
+		$X  =>  Start point for ESC-X- macros.			
+									
+	Editor status word (QZN) bits:					
+	Meaning if bit set						
+									
+		  32   =>	Enable macro collection			
+									
+		  16   =>	Inhibit screen update during cmd input	
+									
+		   8   =>	Primary output stream file is open	
+									
+		   4   =>	Primary input stream file is open	
+									
+		   2   =>	Current primary file has been modified	
+									
+		   1   =>	Append next kill to kill buffer 1	
+
+!* START !
+
+EI			!*Close off the input file			!
+HK			!*Purge the buffer				!
+GZ			!*Pull in the command line from QZT		!
+J			!*Jump back to beginning			!
+^D
+128,0ET			!*Reset abort on error bit			!
+-1,5:W			!*Set terminal to hold whole screen		!
+^[			!*Discard numeric argument returned by :W cmd	!
+22,2:W			!*Protect the bottom 2 status lines from update	!
+^[			!*Discard numeric argument returned by :W cmd	!
+
+!* Preload QHT with macro to erase a given line on screen, leave cursor	!
+!* at that line, and make TECO forget it did anything to the terminal.	!
+
+@^UH~			!* QHT <= macro between the "~" s		!
+  [A			!* Push QAT and QAN onto Q register stack	!
+  UA			!* QAN <= input line number			!
+  0,1ET			!* Enable image mode output			!
+  27^T			!* Send escape to terminal			!
+  ^^[^T
+QA\
+^YT
+^YK
+^^H^T
+  1,0ET			!* Disable image mode output			!
+  ^^KMM			!* Kill the current lines contents		!
+  32768W		!* Make TECO forget we messed with screen	!
+  ]A			!* Pop QAT and QAN off the Q register stack	!
+~			!* End of macro load into QHT			!
+
+!*Preload QMT with macro to output characters to terminal in image mode !
+!*Q registers affected by an MM:  QAN					!
+
+@^UM~			!*QMT <= macro between "~" s  			!
+  UA			!*QAN <= macro's argument (char to output) 	!
+  0,1ET			!*Set image mode bit				!
+  27^T			!*Send ESC to terminal for special sequence	!
+^^[^T
+  QA^T			!*Send the saved character to terminal		!
+  1,0ET			!*Reset back to non image mode			!
+~			!*End of image mode macro load in QMT		!
+
+!*Preload QUT with macro to optionally save a modified buffer		!
+!*Q register affected by MU:  QLT, QAN, QST, QAN, QTN, QQN, QYN, QXN,	!
+!*QWT									!
+
+@^UU~			!*QUT <= all characters between the "~" s	!
+  <			!*Begin loop to save buffer			!
+    @^UL%Save%		!*QLT <= "Save"					!
+    @32:^UL%%		!*QLT <= "Save "				!
+    @:^UL%modified%	!*QLT <= "Save modified"			!
+    @32:^UL%%		!*QLT <= "Save modified "			!
+    @:^UL%buffer%	!*QLT <= "Save modified buffer?"		!
+    @32:^UL%%		!*QLT <= "Save modified buffer? "		!
+    @:^UL%(Y/N)%	!*QLT <= "Save modified buffer? (Y/N)"		!
+    MN			!*Get response from user			!
+    UA			!*Save returned success/abort code		!
+    QA;			!*Abort function if string fetch failed		!
+    GS			!*Get the response string			!
+    -1A-^^N"E		!*If response is "N" then			!
+      -1UA		!*QAN <= code for successful execution		!
+      HK		!*Purge the current buffer			!
+      0;		!*Abort iteration and go to terminal code	!
+    '			!*End of "N" processing				!
+    -1A-^^Y"E		!*If response is "Y" then			!
+      ^YK		!*Delete response from text buffer		!
+      @^UL%File:%	!*QLT <= "File:"				!
+      @32:^UL%%		!*QLT <= "File: "				!
+      MN		!*Get response from user			!
+      UA		!*Save returned success/abort code		!
+      QA;		!*Abort function if string fetch failed		!
+      @^UA%@EW/%	!*QAT <= "@EW/"					!
+      GS		!*Pull file name string into buffer		!
+      ^Y:XA		!*QAT <= "@EW/"			!
+      ^YK		!*Delete from buffer in case we bomb		!
+      @:^UA%/%		!*QAT <= "@EW//"			!
+      MA		!*Open the file to save current buffer in	!
+      EC		!*Write out buffer and close file		!
+      HK		!*Purge the buffer				!
+      0;		!*Abort iteration and go to terminal code	!
+    '			!*End of "Y" processing				!
+    ^YK			!*Delete previous response from text buffer	!
+  >			!*End loop to save buffer			!
+QA			!*Return success code				!
+~
+
+!*Preload QPT with macro to get next char from terminal stream		!
+!*Q registers affected by MP: QTN, QYN, QXN, QQN			!
+
+@^UP~			!*QPT <= everything between "~" s		!
+  0,32ET		!*Set read with no wait for pending commands	!
+  ^TUT			!*QTN <= next pending command (-1 if none)	!
+  QT"L			!*If no pending commands then			!
+    32,0ET		!*Reset read with no wait bit to get user input	!
+    16&QZ"E		!*If screen update is not inhibited then	!
+      -1W		!*Update the terminal screen			!
+    '			!*End of screen update test			!
+    ^TUT		!*QTN <= next command from user			!
+  '			!*End of no pending commands execution		!
+  QT-7"E		!*If input from terminal is a ^G then		!
+    0UY			!*Reset counter to exit current macro		!
+    0UX			!*Reset counter to exit pending macros		!
+    0UQ			!*Reset word to cause abort to highest level	!
+  '			!*End of ^G from terminal processing		!
+  QQ			!*Return ^G abort code as numerical argument	!
+~			!*End of QPT macro load				!
+
+!* Preload QOT with macro to update editor status line (line 23)	!
+
+@^UO~			!* QOT <= all characters between the "~" s	!
+  23MH			!* Go ready the editor status line		!
+  @^A%EMACS%		!* First entry on editor status line		!
+  32^T			!* Send blank to terminal			!
+  @^A%Ver%		!* Second entry on editor status line		!
+  32^T			!* Send blank to terminal			!
+  @^A%1.4%		!* Third entry on editor status line		!
+  32^T			!* Send blank to terminal			!
+  32^T			!* Send blank to terminal			!
+  QZ&32"N		!* If LEARN mode is enabled then		!
+    @^A%(Learn)%	!* Show learn prompt				!
+  |			!* Else if not learn mode			!
+    @^A%(Fundamental)%	!* Show fundamental mode			!
+  '			!* End of mode entry on status line		!
+  32^T			!* Send blank to terminal			!
+  32^T			!* Send blank to terminal			!
+  12&QZ"N		!* If a primary file is open then		!
+    32^T		!* Send another blank to terminal		!
+    @^A%File:%		!* Filespec is last entry on status line	!
+    8&QZ"N		!* If primary output file stream is open then	!
+      :GT		!* Get the output file spec			!
+    |			!* Else input file must be open			!
+      :GK		!* Get input file spec				!
+    '			!* End of file spec test			!
+  '			!* End of filespec insertion			!
+  32768W		!* Forget we did anything to screen		!
+~			!* End of status line update macro		!
+
+!*Preload QXT with macro to fetch next command character		!
+!*Q registers affected by MX:  QTN, QYN, QXN, QQN, QWT,			!
+
+@^UX~			!*QXT <= all characters between the "~" s	!
+  QY"E			!*If no EMACS macro commands to execute then	!
+    MP			!*Get next command from command stream		!
+    32&QZ"N		!*If learn mode is enabled then 		!
+      @QT:^UW%%		!*Append the command to the macro buffer	!
+    '			!*End of macro collection test			!
+  '			!*End of no EMACS macro commands execution	!
+  QY"L			!*If EMACS macro commands to execute then	!
+    GW			!*Pull macro commands into buffer		!
+    QYAUT		!*QTN <= EMACS command extracted from string	!
+    ^YK			!*Kill string in buffer				!
+    %Y			!*Increment macro command counter		!
+    "E			!*If was last EMACS macro command then		!
+      %X		!*Increment macro repeat counter		!
+      "L		!*If more repeat loops to be done then		!
+        -:QWUY		!*Restore command counter contents		!
+      '			!*End of macro command counter restore		!
+    '			!*End of last repeat loop test			!
+  '			!*End of EMACS macro command fetch		!
+  QQ			!*Return abort code as argument			!
+~			!*End of QXT macro load				!
+
+!*Preload QNT with macro to input strings 				!
+!*Q registers affected by MN: QST, QAN, QTN, QQN, QYN, QXN, QWT		!
+
+@^UN~			!*QNT <=  All characters between the "~" s	!
+  0,0XS			!*QST <= null string (clear it)			!
+  24MH			!*Go ready the prompt line			!
+  :GL			!*Display prompt in QLT on terminal		!
+  16#QZUZ		!*Set screen update inhibit bit			!
+  -1UA			!*QAN <= no exit on esc value			!
+  <			!*Begin infinite iteration to input string	!
+    MX			!*QTN <= next character from command stream	!
+    ;			!*If input was a ^G then abort function		!
+    QT-10"N		!*If input was not line feed then		!
+      QT^T		!*Echo character to terminal 			!
+    '			!*End of scroll producing character trap	!
+    @QT:^US%%		!*Append input character to QST string		!
+    QT-10"E		!*If input was LF character then		!
+      0;		!*Exit the input iteration			!
+    '			!*End of LF execution 				!
+    QT-127"E		!*If input was a "DELETE" character		!
+      GS		!*Pull string into text buffer			!
+      ^Y-1XS		!*Push back into QST minus "DELETE" character	!
+      :QS"N		!*If not all characters deleted			!
+        ^Y-2XS		!*Push back string minus char and "DELETE"	!
+      '			!*End of non-null string character delete	!
+      ^YK		!*Delete from text buffer			!
+      24MH		!*Erase old prompt string			!
+      :GL		!*Display prompt string				!
+      :GS		!*Display current input string			!
+      -1UA		!*QAN <= no double esc flag			!
+      F<		!*Go get the next input				!
+    '			!*End of DELETE character processing		!
+    QT-27"E		!*If input was an ESC character then		!
+      QA;		!*Exit input iteration if double ESC set	!
+      0UA		!*Set to cause exit on next ESC			!
+      F<		!*Go get the next input				!
+    '			!*End of ESC input processing			!
+    -1UA		!*QAN <= no double esc flag			!
+  >			!*End of infinite iteration to input characters	!
+  24MH			!*Erase the prompt line				!
+  QQ"S			!*If successful string fetch then		!
+    GS			!*Pull final string into text buffer		!
+    ^Y-2XS		!*Strip off $$ or CRLF terminator		!
+    ^YK			!*Delete from text buffer			!
+  '			!*End of terminator removal			!
+  16^_&QZUZ		!*Reset screen update inhibit bit		!
+  QQ			!*Return success or failure code		!
+~			!*End of string input macro			!
+
+!*LOAD TEXT Q REGISTER I WITH INFINITE ITERATION WHICH IS THE "ROOT"	!
+!*OF THE EXECUTION COMMANDS						!
+
+@^UI~			!*QUI <= main editor macro between "~" char	!
+  ^D			!*Set numeric radix to decimal			!
+  225,30ET		!*No abort; attached; wait; not-image mode	!
+			!*Cancel ^O; no-echo, lower-case; scope		!
+  16ED			!*Yank prot; ^ means ctrl; srch	fail anchor	!
+  16^_&QZUZ		!*Insure terminal update inhibit bit gets reset	!
+  ^^HMM			!*Send cursor home				!
+  ^^JMM			!*Clear entire screen				!
+  MO			!*Update the status line			!
+  32^T			!*Force TECO to update screen on next -1W cmd	!
+  <			!*Begin edit execution macro 			!
+    !A!			!*Label point 					!
+    0UW			!*QWN <= 0 (Initialize up/down line loc save)	!
+    !B!			!*Label point 					!
+    -1UQ		!*QQN <= success  (reset abort value)		!
+    1UO			!*QO <= 1 (Initialize repeat count) 		!
+    16^_&QZUZ		!*Reset screen update inhibit bit		!
+    MX			!*Get the next EMACS command			!
+
+!*BEGIN EXECUTION OF THE CURRENT COMMAND 				!
+
+    !V!			!*Start execution of command 			!
+ 
+    QT-8"E		!*FOR VAX					!
+      24UT		!*MAP ^H to ^X					!
+    '
+
+    QT-20"E		!*FOR VAX					!
+      19UT		!*MAP ^T to ^S					!
+    '
+
+    QT-21"E		!*FOR VAX					!
+      25UT		!*MAP ^U to ^Y					!
+    '
+
+    QT@O/AI,CA,CB,CC,CD,CE,CF,CG,AI,AI,AI,CK,CL,AI,CN,CO,CP,CQ,CR,CS/
+    QT-20@O/AI,AI,CV,CW,CX,CY,CZ,$/
+
+    QT-127"E		!*If command is a "delete" character then 	!
+      QO<		!*Do by number of repeat counts			!
+        -.;		!*Abort iteration if at buffer beginning	!
+        -D		!*Delete back one character			!
+      >			!*End of repeat iteration			!
+      1^_&QZ#2UZ	!*No kill append; buffer modified		!
+      F<		!**** Go get another user command 		!
+    '			!*End of "delete" char execution 		!
+
+    !AI!		!*Auto insert the cmd char as text		!
+    QO		!*Do an auto insert				!
+    1^_&QZ#2UZ		!*No kill append; buffer modified		!
+    F<			!**** Go get next command			!
+
+    !CA!		!*Begin ^A execution				!
+    0L			!*Set pointer to beginning of current line	!
+    1^_&QZUZ		!*No kill append;				!
+    F<			!**** Go get another user command 		!
+
+    !CB!		!*Begin ^B execution				!
+    QO<			!*Repeat by repeat count			!
+      -.;		!*Exit iteration if at buffer beginning		!
+      R			!*Backup one character				!
+      >			!*End of repeat iteration			!
+    1^_&QZUZ		!*No kill append				!
+    F<			!**** Go get another user command 		!
+
+    !CC!		!*Begin ^C execution				!
+      0;		!*Return to teco level (can restart with MI) 	!
+
+    !CD!		!*Begin ^D execution				!
+    QO<			!*Repeat by repeat count in QON			!
+      .-Z;		!*Exit iteration if at buffer end		!
+      D			!*Delete one character				!
+    >			!*End of iteration				!
+    1^_&QZ#2UZ		!*No kill append; buffer modified		!
+    F<			!**** Go get next user command 			!
+
+    !CE!		!*Begin ^E execution				!
+    L			!*Go to end of current line 			!
+    ."N			!*If not at beginning of buffer then		!
+      -1A-10"E		!*If previous character is a LF then		!
+        2R		!*Back up over CRLF characters			!
+      '			!*End of CRLF backover operation		!
+    '			!*End of buffer beginning check			!
+    1^_&QZUZ		!*No kill append				!
+    F<			!**** Go get next user command			!
+ 
+    !CF!		!*Begin ^F execution				!
+    QO<			!*Do by repeat count				!
+      .-Z;		!*Exit iteration if at buffer end		!
+      C			!*Go forward one character			!
+    >			!*End of iteration				!
+    1^_&QZUZ		!*No kill append				!
+    F<			!**** Go get next user command 			!
+   
+    !CG!		!*Begin ^G execution				!
+    0UX			!*Abort any pending macro repeats		!
+    0UY			!*Abort any pending commands in a current macro	!
+    16#32^_&QZUZ	!*Reset screen inhibit and macro collection bits!
+    7MM			!*Ring terminal's bell (no dirty thoughts now!)	!
+    MO			!*Refresh status line				!
+    F<			!**** Go get next user command			!
+
+    !CK!		!*Begin ^K execution				!
+    QO<			!*Do the number of kills specified by repeat	!
+      .-Z;		!*If at end of buffer then exit kill		!
+      0AUA		!*QAN <= ascii code of next char in buffer	!
+      QA-13"E		!*If it is a CR then kill the CRLF only		!
+        QZ&1"N		!*If append bit is set then append kill 	!
+          .,.+2:XZ	!*Append CRLF to kill buffer 1			!
+        |		!*Else if append bit is not set then		!
+          GZ		!*Pull kill buffer 1 contents into text buffer	!
+          ^YXY		!*QTY <= second most recent kill		!
+          ^YK		!*Delete second most recent kill from text buffr!
+          .,.+2XZ	!*QTZ <= CRLF from end of line			!
+          QZ#1UZ	!*Set the append bit for further kills		!
+        '		!*End of CRLF kill in non-append mode		!
+        2D		!*Delete CRLF from buffer			!
+      |			!*Else if not at end of line then		!
+        .-Z;		!*Exit the kill command if at buffer end	!
+        .UA		!*Save current pointer position 		!
+        L		!*Go to end of current line (after CRLF)	!
+        -.;		!*If at top of buffer then exit kill command	!
+        -1A-10"E	!*If previous char is LF then			!
+          2R		!*Back up over CRLF 				!
+        '		!*End of backup check				!
+        QZ&1"N		!*If append bit is set then append kill		!
+          QA,.:XZ	!*Append kill to buffer 1			!
+        |		!*Else if append bit is not set then		!
+          GZ		!*Pull kill buffer 1 contents into text buffer	!
+          ^YXY		!*QTY <= second most recent kill		!
+          ^YK		!*Delete second most recent kill from text buffr!
+          QA,.XZ	!*QTZ <= current line up to CRLF		!
+          QZ#1UZ	!*Set the append bit for further kills		!
+        '		!*End of non-EOL non-append			!
+        QA,.K		!*Kill the line up to CRLF			!
+      '			!*End of non-EOL kill				!
+    >			!*End of kill iteration				!
+    2#QZUZ		!*Set buffer modified bit			!
+    F<			!**** Go get next command 			!
+    
+    !CL!		!*Begin ^L execution				!
+    ^^HMM		!*Send cursor to home position			!
+    ^^JMM		!*Erase the entire screen (including last lines)!
+    0,5:W		!*Turn off hold mode temporarily		!
+    ^[			!*Discard numeric argument returned by :W cmd	!
+    -1W			!*Update the screen				!
+    -1,5:W		!*Turn hold mode back on			!
+    MO			!*Put status line back in			!
+    F<			!**** Go get next command			!
+
+    !CN!		!*Begin ^N execution				!
+    1UA			!*Set up for down one line 			!
+    @O!M!		!**** Go do the move 				!
+   
+    !CO!		!*Begin ^O execution				!
+    QO<			!*Repeat by count 				!
+      13@I%%		!*Insert a CR character 			!
+      10@I%%		!*Insert a LF character 			!
+      2R		!*Back up over the CRLF 			!
+    >			!*End of repeat loop 				!
+    1^_&QZ#2UZ		!*No kill append; buffer modified		!
+    F<			!**** Go get next command 			!
+   
+    !CP!		!*Begin ^P execution				!
+    -1UA		!*Set up for UP one line 			!
+    !M!			!*^N and ^P move start label point 		!
+    QO*QAUO		!*QON <= Number of lines to jump		!
+    QW"E		!*If position # unknown from previous then	!
+      0UD		!*QD <= zero					!
+      .UA		!*QA <= current pointer loc 			!
+      0L		!*Go to beginning of current line 		!
+      QA-.%W<		!*Repeat for # of char to original pointer loc	!
+        0A-32"L		!*If next buffer char is not printable char 	!
+          0A-27"N	!*If next buffer char is not ESC then 		!
+            0A-9"E	!*If next bffer char is a tab then 		!
+              6-(QD&7)%W^[	!*					!
+              -2UD	!*						!
+            '		!*						!
+            %D		!*Increment char counter			!
+            1%W		!*Increment char loc for the "^" char		!
+          '		!*End of non-ESC test				!
+        '		!*End of non-printable test			!
+        C		!*Move over one character			!
+        %D		!*Increment character counter			!
+      >			!*End of char location in line computation	!
+    '			!*End of unknown location processing		!
+    QOL			!*Go to start of destination line		!
+    -QWUC		!*Initialize pointer location counter		!
+    0UD			!*Clear character counter			!
+    QW<			!*Begin iteration to go to character location	!
+      .-Z;		!*If reached end of buffer then exit iteration	!
+      0A-32"L		!*If next char is non-printable char then	!
+        0A-13"E		!*If next char is also a CR then		!
+          0;		!*Exit iteration; reached end of line		!
+        '		!*End of CR processing 				!
+        0A-27"N		!*If next char is NOT an ESC then		!
+          0A-9"E	!*If next char is a TAB then			!
+            6-(QD&7)%C^[!*						!
+            -2UD	!*						!
+          '		!*						!
+          %D		!*Increment character counter			!
+          1%C		!*Increment location counter			!
+        '		!*End of non-ESC non-printable char processing	!
+      '			!*End of non-printable char processing		!
+      C			!*Move over one character in line		!
+      %D		!*Increment character counter			!
+      1%C		!*Increment location counter			!
+      "G		!*If we over ran the location then		!
+        R		!*Backup one character				!
+      '			!*End of over run correction			!
+      QC;		!*If have reached location then exit iteration	!
+    >			!*End of new line move iteration		!
+    1^_&QZUZ		!*No kill append				!
+    @O!B!		!**** Go get next command			!
+ 
+    !CQ!		!*Begin ^Q execution				!
+    MX			!*Get the next input character 			!
+    ^[			!*Discard any returned numeric value		!
+    QO<			!*Repeat by count 				!
+      QT@I%%		!*Insert the character 				!
+    >			!*End of repeat loop 				!
+    1^_&QZ#2UZ		!*No append of next kill; buffer modified	!
+    F<			!**** Go get next command 			!
+
+    !CS!		!*Begin ^R or ^S execution			!
+    QT-18"E		!*If command is ^R then				!
+      -QOUO		!*Reverse search count				!
+    '			!*End of search count negation for ^R command	!
+    .UE			!*QEN <= original  pointer position		!
+    0,0XA		!*QAT <= null string (initialize search string)	!
+    <			!*Begin infinite search iteration loop		!
+      MX		!*Get next command from command stream		!
+      ^[		!*Discard any returned numeric value		!
+      QT-7"E		!*If command is ^G then				!
+        QEJ		!*Jump back to original pointer location	!
+        24MH		!*Flush the current prompt line			!
+        0;		!*Exit the search iteration			!
+      '			!*End of ^G processing inside ^S loop		!
+      QT-18"E		!*If input char is a ^R then			!
+        :QA"E		!*If search string is null then			!
+          GV		!*Pull previous successful search string in	!
+          ^YXA		!*QAT <= previous search string			!
+          ^YK		!*Delete string from text buffer		!
+          @O!S!		!*Go search for new string			!
+        |		!*Else if string is not null then		!
+          .UF		!*QFN <= last successful search pointer loc	!
+          @O!S2!	!*Go do search but start from current location	!
+        '		!*End of non-null ^R processing			!
+      '			!*End of ^R processing inside ^S loop		!
+      QT-19"E		!*If input char is a ^S then			!
+        :QA"E		!*If search string is null then			!
+          GV		!*Pull previous successful search string in	!
+          ^YXA		!*QAT <= previous search string			!
+          ^YK		!*Delete string from text buffer		!
+          @O!S!		!*Go search for new string			!
+        |		!*Else if string is not null then		!
+          .UF		!*QFN <= last successful search pointer loc	!
+          @O!S2!	!*Go do search but start from current location	!
+        '		!*End of non-null ^S processing			!
+      '			!*End of ^S processing inside ^S loop		!
+      QT-27"E		!*If input char is ESC then			!
+        0;		!*Exit search loop				!
+      '			!*End of ESC processing inside ^S loop		!
+      QT-127"E		!*If  input is DELETE char then			!
+        :QA"N		!*If search string is not null then		!
+          GA		!*Pull string into text buffer			!
+          ^Y-1XA	!*QAT <= truncated search string		!
+          ^YK		!*Kill search string in text buffer		!
+          24MH		!*Flush the current prompt line			!
+        '		!*End of non-null DELETE processing		!
+        @O!S!		!*Jump to search begin point			!
+      '			!*End of DELETE char processing			!
+      @QT:^UA%%		!*Append input character to QAT			!
+      !S!		!*Search label point				!
+      .UF		!*QFN <= last successful search pointer loc	!
+      QEJ		!*Start search from original location		!
+      !S2!		!*Label point for search starting from current	!
+      16^_&QZUZ		!*Reset screen update inhibit bit		!
+      QO:@S%^EQA%	!*Search for occurance specified by QON		!
+      "U		!*If search was not successful then		!
+        QFJ		!*Go back to last successful location		!
+        24MH		!*Go ready the prompt line			!
+        @^UB%Not%	!*QBT <= "Not"					!
+        @32:^UB%%	!*QBT <= "Not "					!
+        @:^UB%Found:%	!*QBT <= "Not Found:"				!
+        @32:^UB%%	!*QBT <= "Not Found: "				!
+        :GB		!*Show "Not Found: " to user			!
+        :GA		!*Show search string to user			!
+        32768W		!*Tell TECO to forget we messed with screen	!
+        QY"N		!*If inside an EMACS macro then			!
+          0UX		!*Flush macro repeat count to abort macros	!
+          0UY		!*Abort any commands left in the current macro	!
+          24MH		!*Flush the prompt line				!
+          0;		!*Exit the search iteration			!
+        |		!*Else if not inside macro			!
+          16#QZUZ	!*Set terminal update inhibit bit		!
+        '		!*End of EMACS macro test			!
+      |			!*Else if the search was successful then	!
+        QO"L		!*If search is reverse then			!
+          .+^SJ		!*Jump to beginning of string			!
+        '		!*End of reverse search pointer adjustment	!
+        GA		!*Get the successful search string		!
+        ^YXV		!*QVT <= most recent successful search string	!
+        ^YK		!*Delete string from text buffer		!
+        1^_&QZUZ	!*Reset append next kill bit			!
+      '			!*End of search success test			!
+    >			!*End of search loop				!
+    16^_&QZUZ		!*Insure terminal update inhibit gets reset	!
+    QE-."N		!*If final position is not same as initial then	!
+      1^_&QZUZ		!*Reset append next kill bit			!    
+    '			!*End of pointer movement test			!
+    F<			!**** Go get next command			!
+   
+    !CV!		!*Begin ^V execution				!
+    20*QOL		!*Jump down that many windows 			!
+    1^_&QZUZ		!*No kill append				!
+    F<			!**** Go get next command 			!
+   
+    !CW!		!*Begin ^W execution				!
+    QZ&1"N		!*If append mode then				!
+      QM,.:XZ		!*Append the marked region to kill buffer 1	!
+    '			!*End of append					!
+    QZ&1"E		!*If non-append mode then			!
+      GZ		!*Pull kill buffer 1 contents into text buffer	!
+      ^YXY		!*QTY <= second most recent kill		!
+      ^YK		!*Delete second most recent kill from text buffr!
+      QM,.XZ		!*QZT <= Currently marked region		!
+      QZ#1UZ		!*Set append bit in QNZ				!
+    '			!*End of non append kill save			!
+    QM,.K		!*Kill from last mark to current point		!
+    2#QZUZ		!*Mark buffer modified				!
+    F<			!**** Go get next command 			!
+   
+    !CY!		!*Begin ^Y execution				!
+    :QZ"N		!*If kill buffer length is not zero then	!
+      QO		!*Get current kill buffer 1 contents		!
+      1^_&QZ#2UZ	!*No append on next kill; buffer modified	!
+    '			!*End of unkill operation			!
+    F<			!**** Go get next command 			!
+
+
+!*ESC COMMAND MACROS START HERE 					!
+   
+    !$!			!*Begin input of 2nd char in 2 char cmd		!
+    MX			!*Get 2nd char from user 			!
+   
+    ^[			!*Discard any returned numeric value		!
+
+    QT-7"E		!*If command is an ESC-^G then			!
+      F<		!**** Go get next command			!
+    '			!*End off ESC-^G execution			!
+
+    QT"D		!*If input was a numeric arg then 		!
+      0UO		!*QO  <= 0  (clear repeat count) 		!
+      16#QZUZ		!*Set inhibit screen update during input bit	!
+      -1UA		!*QAN <= -1 (no loop exit)			!
+      <			!*Begin infinite numeric fetch loop 		!
+        QA;		!*Exit when input was not digit			!
+        QO*10+QT-^^0UO	!*Build numeric value 				!
+        MX		!*Get next char 				!
+        ^[		!*Discard any returned numeric value		!
+        QT-7"E		!*If input is ^G then				!
+          1UO		!*Reset repeat count to 1			!
+          0;		!*Exit the iteration				!
+        '		!*End of ^G trap				!
+        0UA		!*Set up to cause loop exit			!
+        QT"D		!*If was a digit in then 			!
+          -1UA		!*Set up to stay in loop			!
+        '		!*End of digit test				!
+      >			!*End of infinite numeric loop 			!
+      16^_&QZUZ		!*Reset inhibit screen update during input bit	!
+      @O!V!		!**** Go execute next command 			!
+    '			!*End of numeric arg input 			!
+   
+    QT"V		!*If 2nd char is lower case alpha then 		!
+      QT-32UT		!*Convert to upper case 			!
+    '			!*End of case conversion 			!
+   
+    QT-^^X"E		!*If command is an ESC-X- command then		!
+      @O!$X!		!**** Go to ESC-X macros			!
+    '			!*End of ESC-X test				!
+  	 
+    QT-23"E		!*If command is ESC-^W then			!
+      1#QZUZ		!*Append next kill to kill buffer		!
+      F<		!**** Go get next command			!
+    '			!*End of ESC-^W execution			!
+
+    QT-25"E		!*If command is ESC ^Y then			!
+      G9		!*Yank in the TECO minibuffer contents		!
+      1^_&QZ#2UZ	!*No append next kill; buffer modified		!
+      F<		!**** Go get next command			!
+    '			!*End of ESC ^Y execution			!
+
+    QT-27"E		!*If command is ESC-ESC then 			!
+      @^UL%Command:%	!*QLT <= Minibuffer prompt 			!
+      @32:^UL%%		!*QLT <= "Command: "				!
+      MN		!*Get input string from user			!
+      "U		!*If string fetch was unsuccessful then 	!
+        32768W		!*Tell TECO to forget we fiddled with screen	!
+        F<		!**** Go get next command			!
+      '			!*End of fetch failed test			!
+      GS		!*Pull string into buffer			!
+      ^YXQ		!*Push string into QQT				!
+      ^YK		!*Delete string from buffer			!
+      @27:^UQ%%		!*Append ESC to QQT				!
+      @27:^UQ%%		!*Append ESC to QQT				!
+      MQ		!*Execute TECO command				!
+      F<		!**** Go get next command			!
+    '			!*End of ESC-ESC command execution 		!
+   
+   QT-^^B"E		!*If command is ESC-B then			!
+      QO<		!*Do according to repeat count			!
+        .UA		!*Save current pointer				!
+        @0,-1:S%^ES%	!*Scan backwards for tabs & blanks		!
+        "U		!*If unsuccessful then				!
+          J		!*Jump to beginning of buffer			!
+          0;		!*Exit the iteration				!
+        '		!*End "no more" test				!
+        .-QA+1"G	!*If pointer didn't move backwards then		!
+          <		!*Begin  iteration to move pointer back		!
+            -.;		!*Done if at beginning				!
+            R		!*Back up one character				!
+            -.;		!*Done if at beginning				!
+            0A-32"N	!*If not a blank then				!
+              0A-9"N	!*If not a tab then				!
+                0A-13"N	!*If not a CR then				!
+                  0A-10"N	!*If not a LF then			!
+                    0;	!*Backup is done				!
+                  '	!*End of LF test				!
+                '	!*End of CR test				!
+              '		!*End of TAB test				!
+            '		!*End of BLANK test				!
+          >		!*End of backup iteration			!
+          @0,-1:S%^ES%	!*Scan for 2nd occurance backwards		!
+          "U		!*If unsuccessful then				!
+            J		!*Jump to buffer beginning			!
+          '		!*End of no 2nd occurance test			!
+        '		!*End of pointer didn't move test		!
+      >			!*End of ESC-B iteration			!
+      1^_&QZUZ		!*No append for next kill			!
+      F<		!**** Go get next command			!
+    '			!*End of ESC-B command execution		!
+   
+    QT-^^F"E		!*If command is ESC-F then			!
+      QO<		!*Do according to repeat count			!
+        .UA		!*QAN <= current pointer position		!
+        @0,1:S%^EL%	!*Look for next line terminator			!
+        .UB		!*QBN <= possible line terminator pntr		!
+        QAJ		!*Return to original location			!
+        @0,1:S%^ES%	!*Scan rest of buffer for tabs & blanks		!
+        .UC		!*QCN <= possible tab/blank string pntr		!
+        QB-QA"G		!*If line terminator was also found		!
+          QC-QB"G	!*If line terminator was first then		!
+            QBJ		!*Go to it instead				!
+          '		!*End of line term first test			!
+        '		!*End of line term also found test		!
+        .-QA"E		!*If no move was made then			!
+          0;		!*Exit the iteration if no more			!
+        '		!*End of no more moves test			!
+      >			!*End of ESC-F iteration			!
+      1^_&QZUZ		!*No append for next kill			!
+      F<		!**** Go get next command			!
+    '			!*End of ESC-F command execution		!
+   
+    QT-^^G"E		!*If command is ESC G then			!
+      .UA		!*Save initial pointer location			!
+      J			!*Jump to buffer beginning			!
+      QO-1L		!*Go down specified number of lines-1		!
+      QA-."N		!*If not back where we started then		!
+        1^_&QZUZ	!*No append next kill				!
+      '			!*End of pointer movement test			!
+      F<		!**** Go get next command			!
+    '			!*End of ESC G command				!
+
+    QT-^^N"E		!*If command is ESC-N then 			!
+      QOP		!*Jump to that page 				!
+      1^_&QZUZ		!*No kill append				!
+      F<		!**** Go get next command 			!
+    '			!*End of ESC-N command execution 		!
+   
+    QT-^^V"E		!*If command is ESC-V then 			!
+      -20*QOL		!*Jump back up that many windows 		!
+      1^_&QZUZ		!*No kill append				!
+      F<		!**** Go get next command 			!
+    '			!*End of ESC-V command execution 		!
+ 
+    QT-^^W"E		!*If command is a ESC-W then			!
+      GZ		!*Pull kill buffer 1 contents into text buffer	!
+      ^YXY		!*QTY <= second most recent kill		!
+      ^YK		!*Delete second most recent kill from text buffr!
+      QM-."G		!*If mark is ahead of pointer then		!
+        .,QMXZ		!*QZT <= region from pointer+1 to mark		!
+      |			!*Else if mark is behind pointer then		!
+        QM,.XZ		!*QZT <= region from mark+1 to pointer		!
+      '			!*End of mark+1 to pointer region save		!
+      1^_&QZUZ		!*Set no append					!
+      F<		!**** Go get next command 			!
+    '			!*End of ESC-W execution 			!
+
+    QT-^^Z"E		!*If command is ESC-Z then			!
+      0;		!*Exit to teco level				!
+   '			!*End of ESC-Z command execution		!
+   
+    QT-^^%"E		!*If command is ESC % then			!
+      1UB		!*Enable query					!
+      !QR!		!*Query replace / replace common point		!
+      @^UL%Replace:%	!*QLT <= "Replace:"				!
+      @32:^UL%%		!*QLT <= "Replace: "				!
+      MN		!*Get the input string				!
+      "U		!*If failed then				!
+        F<		!**** Go get next command			!
+      '			!*End of string fetch abort test		!
+      GS		!*Get the string that was input			!
+      ^YXA		!*QAT <= string to replace			!
+      ^YK		!*Delete string from buffer			!
+      @^UL%With:%	!*QLT <= "With:"				!
+      @32:^UL%%		!*QLT <= "With: "				!
+      MN		!*Get the input string				!
+      "U		!*If failed then				!
+        F<		!**** Go get next command			!
+      '			!*End of string fetch abort test		!
+      <			!*Begin query replace loop			!
+        0,1:@S%^EQA%	!*Find string to replace			!
+        ;		!*If search failed then exit			!
+        1^_&QZUZ	!*Reset append next kill bit since pointer moved!
+        32UT		!*Fake a confirm by user			!
+        QB"N		!*If query is enabled then			!
+          MP		!*Get response from terminal stream		!
+          ;		!*If abort then exit loop			!
+        '		!*End of user query				!
+        QT-32"E		!*If space bar was pressed then			!
+          ^YK		!*Kill the last found string			!
+           GS		!*Replace with replacement string		!
+           2#QZUZ	!*Set buffer modified bit			!
+           1^_&QZUZ	!*Reset append next kill bit			!
+        '		!*End of positive replacement response test	!
+      >			!*End of query replace loop			!
+      F<		!**** Go get next command			!
+    '			!*End of ESC % command processing		!
+
+    QT-^^*"E		!*If command is ESC * then			!
+      :QQ"N		!*If length of last TECO cmd is not zero then	!
+        ^^HMM		!*Send cursor to home position			!
+        ^^JMM		!*Clear the screen				!
+        :GQ		!*Show the contents of the TECO minibuffer	!
+        16#QZUZ		!*Disable screen update during command fetch	!
+        MX		!*Get the next command character (ignored)	!
+        ^[		!*Discard any returned numeric value		!
+        16^_&QZUZ	!*Enable screen updates again			!
+        MO		!*Refresh the status line			!
+        32^T		!*Force TECO to update screen			!
+      '			!*End of non null TECO cmd processing		!
+      F<		!**** Go get next command			!
+    '			!*End of ESC * command execution		!
+
+    QT-^^<"E		!*If command is ESC-< then 			!
+      0J		!*Jump to top of buffer 			!
+      1^_&QZUZ		!*No kill append 				!
+      F<		!**** Go get next command 			!
+    '			!*End of ESC-< command execution 		!
+   
+    QT-^^>"E		!*If command is ESC-> then 			!
+      ZJ		!*Jump to end of buffer 			!
+      1^_&QZUZ		!*No kill append 				!
+      F<		!**** Go get next command 			!
+    '			!*End of ESC-> command execution 		!
+   
+    QT-^^@"E		!*If command is ESC-@ then 			!
+      .UM		!*Set mark at current point 			!
+      24MH		!*Go ready the prompt line			!
+      @^A%Set.%		!*Tell user mark is set				!
+      32768W		!*Tell TECO to forget we messed with screen	!
+      F<		!**** Go get next command 			!
+    '			!*End of ESC-@ command execution 		!
+   
+    7MM			!*ESC command not found; ring bell 		!
+    32768W		!*Forget that we rang terminal's bell (she did)	!
+    F<			!**** Go get next command 			!
+
+
+!*^X  COMMAND MACROS 							!
+
+    !CX!		!*^X commands start here 			!
+    MX			!*Get the 2nd char in the ^X command 		!
+   
+   ^[			!*Discard any returned numeric value		!
+
+    QT-7"E		!*If command is an ^X-^G then			!
+      F<		!**** Go get next command			!
+    '			!*End off ^X-^G execution			!
+
+    QT"V		!*If 2nd char is lower case alpha then 		!
+      QT-32UT		!*Convert to upper case 			!
+    '			!*End of case conversion 			!
+   
+    QT-12"E		!*If command is ^X ^L then			!
+      .UC		!*QCN <= current pointer location		!
+      QMUA		!*QAN <= Region start (mark location initially)	!
+      .UB		!*QBN <= Region end (pointer loc initially)	!
+      QB-QA"L		!*If mark is after pointer then			!
+        QMUB		!*QBN <= mark location				!
+        .UA		!*QAN <= pointer location			!
+      '			!*End of mark/pointer reversal			!
+      QAJ		!*Jump to start of region			!
+      QB-QA<		!*For number of characters in region		!
+        0A"W		!*If next character is uppercase then		!
+          0A+32@I%%	!*Insert matching lower case character		!
+          D		!*Delete the uppercase character		!
+          R		!*Back up over the new lower case character	!
+          2#QZUZ	!*Set buffer modified bit			!
+        '		!*End of case conversion			!
+        C		!*Go check next character			!
+      >			!*End of case conversion			!
+      QCJ		!*Jump back to start location			!
+      F<		!**** Go get next command			!
+    '			!*End of ^X ^L processing			!
+
+    QT-14"E		!*If command is ^X ^N then			!
+      6:W-1UA		!*QAN <= buffer loc of char before home position!
+      QA"N		!*If home position is not top of buffer then	!
+        8&QZ"N		!*If output file is open then			!
+          B,QAP		!*Output from top to home to output file	!
+          .-QAUE	!*Adjust pointer to current loc BEFORE delete	!
+          B,QAD		!*Delete from buffer				!
+          QEJ		!*Jump to adjusted buffer loc (same rel pos)	!
+          ^E"N		!*If previous read found form feed then		!
+            ZJ		!*Jump to buffer end				!
+            12@I%%	!*Insert a form feed character			!
+            QEJ		!*Jump back to original location		!
+          '		!*End of form feed append if necessary		!
+          A		!*Append a new page to current page		!
+        '		!*End of output file open processing		!
+      '			!*End of across page boundry append		!
+    1^_&QZUZ		!*No append next kill				!
+    F<			!**** Go get next command			!
+    '			!*End of ^X^N processing			!
+
+    QT-18"E		!*If command is ^X-^R then			!
+      @^UL%Read%	!*QLT <= "Read"					!
+      @32:^UL%%		!*QLT <= "Read "				!
+      @:^UL%file:%	!*QLT <= "Read file:"				!
+      @32:^UL%%		!*QLT <= "Read file: "				!
+      MN		!*Go get input string				!
+      "U		!*If string fetch was unsuccessful then		!
+        F<		!**** Go get next command			!
+      '			!*End of zero-length string test		!
+      GS		!*Pull file string into buffer			!
+      ^YXB		!*Put in QBT for safe keeping			!
+      ^YK		!*Purge from buffer				!
+      8&QZ"N		!*If output file is open then			!
+        2&QZ"N		!*If buffer has been modified then		!
+          EC		!*Move buffer to file and close file		!
+        |		!*Else if buffer has not been modified then	!
+          EK		!*Kill the output file				!
+        '		!*End of output file open processing		!
+      |			!*Else if output file is not open then		!
+        2&QZ"N		!*If buffer has been modified then		!
+          MU		!*Take action to save the buffer or delete it	!
+          "U		!*If aborted then				!
+            F<		!**** Go get next command			!
+          '		!*End of abort trap				!
+        '		!*End of buffer modified processing		!
+      '			!*End of output file open/closed processing	!
+      2#8^_&QZUZ	!*Reset modified and output file open bits	!
+      @^UA%@:ER/%	!*QTA <= all characters between "%" s		!
+      GB		!*Get the file string				!
+      ^Y:XA		!*Append it to EB command			!
+      @:^UA%/%		!*Append all char between "%" s to QTA		!
+      HK		!*Purge current buffer				!
+      4^_&QZUZ		!*Reset input file open bit			!
+      MA		!*Try to open an old file for read only		!
+      "S		!*If successful open then			!
+        G*		!*Pull file file-spec into buffer		!
+        ^YXK		!*QKT <= primary input filespec			!
+        HK		!*Purge buffer					!
+        A		!*Pull in first page of the file		!
+        4#QZUZ		!*Set input file open 				!
+      '			!*End of successful open execution		!
+      1#2^_&QZUZ	!*No kill append; buffer not modified		!
+      MO		!*Update the status line			!
+      F<		!**** Go get next command			!
+    '			!*End of ^X-^R execution			!
+
+    QT-19"E		!*If command is ^X ^S then			!
+      8&QZ"N		!*If output file is open then			!
+        EC		!*Move out rest of input file and close output	!
+        2#8^_&QZUZ	!*Reset modified and output file open bits	!
+        @^UA%@EB/%	!*QAT <= "@EB/"					!
+        GT		!*Pull output file spec into text buffer	!
+        ^S+.J		!*Jump back to beginning of string (revs bug)	!
+        .UA		!*QAN <=  loc before first filespec character	!
+	@S%;%		!*Search FORWARD for first ; character		!
+        QA,.-1:XA	!*Append filename minus the version number	!
+        @:^UA%/%	!*QAT <= "@EB//"			!
+        HK		!*Purge current buffer				!
+        MA		!*Open the previous file for both input & output!
+        G*		!*Get the new file spec				!
+        ^YXT		!*QTT <= new output file spec			!
+        ^YXK		!*QKT <= new input file spec			!
+        HKA		!*Purge buffer and pull  in first page of file	!
+        1#4#8#QZUZ	!*No kill append, output and input files open	!
+      '			!*End of file save for open output file		!
+      MO		!*Update the status line to show new filename	!
+      F<		!**** Go get next command			!
+    '			!* End of ^X ^S execution			!
+
+    QT-21"E		!*If command is ^X ^U then			!
+      .UC		!*QCN <= current pointer location		!
+      QMUA		!*QAN <= Region start (mark location initially)	!
+      .UB		!*QBN <= Region end (pointer loc initially)	!
+      QB-QA"L		!*If mark is after pointer then			!
+        QMUB		!*QBN <= mark location				!
+        .UA		!*QAN <= pointer location			!
+      '			!*End of mark/pointer reversal			!
+      QAJ		!*Jump to start of region			!
+      QB-QA<		!*For number of characters in region		!
+        0A"V		!*If next character is lowercase then		!
+          0A-32@I%%	!*Insert matching uppercase character		!
+          D		!*Delete the lowercase character		!
+          R		!*Back up over the new uppercase character	!
+          2#QZUZ	!*Buffer modified				!
+        '		!*End of case conversion			!
+        C		!*Go look at next character			!
+      >			!*End of case conversion			!
+      QCJ		!*Jump back to start location			!
+      F<		!**** Go get next command			!
+    '			!*End of ^X ^U processing			!
+
+    QT-22"E		!*If command is ^X-^V then			!
+      @^UL%Visit%	!*QLT <= "Visit"				!
+      @32:^UL%%		!*QLT <= "Visit "				!
+      @:^UL%file:%	!*QLT <= "Visit file:"				!
+      @32:^UL%%		!*QLT <= "Visit file: "				!
+      MN		!*Go get input string				!
+      "U		!*If string fetch was unsuccessful then		!
+        F<		!**** Go get next command			!
+      '			!*End of zero-length string test		!
+      GS		!*Pull file string into buffer			!
+      ^YXB		!*Put in QBT for safe keeping			!
+      ^YK		!*Purge from buffer				!
+      8&QZ"N		!*If output file is open then			!
+        2&QZ"N		!*If buffer has been modified then		!
+          EC		!*Move the new buffer to output file & close it	!
+        |		!*Else if buffer has not been modified then	!
+          EK		!*Kill the output file				!
+        '		!*End of kill unmodified buffer & kill file	!
+      |			!*Else  if output file is not open then		!
+        2&QZ"N		!*If buffer has been modified then		!
+          MU		!*Take action to save the buffer		!
+          "U		!*If aborted then				!
+            F<		!**** Go get next command			!
+          '		!*End of abort trap				!
+        '		!*End of buffer modified processing		!
+      '			!*End of output file is open/closed processing	!
+      2#8^_&QZUZ	!*Reset modified and output file open bits	!
+      @^UA%@:EB/%	!*QTA <= all characters between "%" s		!
+      GB		!*Get the file string				!
+      ^Y:XA		!*Append it to EB command			!
+      @:^UA%/%		!*Append all char between "%" s to QTA		!
+      HK		!*Purge buffer					!
+      MA		!*Try to open an old file with backup		!
+      "S		!*If successful open then			!
+        G*		!*Pull complete filespec into buffer		!
+        ^YXT		!*QTT <= new output filespec			!
+        ^YXK		!*QKT <= new input filespec			!
+        HKA		!*Kill current buffer and pull in next		!
+        4#8#QZUZ	!*Set input file open & output file open bit	!
+      |			!*Else if not successful open with backup then	!
+        @^UA%@EW/%	!*QTA <= all char between "%" s 		!
+        GS		!*Pull file name back into buffer		!
+        ^Y:XA		!*Append the file string to QTA			!
+        ^YK		!*Kill file name in case it bombs		!
+        @:^UA%/%	!*Append the final commands to QTA		!
+        MA		!*Open a new file				!
+        G*		!*Pull output filespec into buffer		!
+        ^YXT		!*QTT <= new output file spec			!
+        HK		!*Purge the buffer				!
+        8#QZUZ		!*Set output file open bit			!
+      '			!*End of open file execution			!
+      1#2^_&QZUZ	!*No kill append; buffer not modified		!
+      MO		!*Update status line				!
+      F<		!**** Go get next command			!
+    '			!*End of ^X-^V execution			!
+
+    QT-23"E		!*If command is ^X-^W then			!
+      @^UL%Write%	!*QLT <= "Write"				!
+      @32:^UL%%		!*QLT <= "Write "				!
+      @:^UL%file:%	!*QLT <= "Write file:"				!
+      @32:^UL%%		!*QLT <= "Write file: "				!
+      MN		!*Go get input string				!
+      "U		!*If string fetch was unsuccessful then		!
+        F<		!**** Go get next command			!
+      '			!*End of zero-length string test		!
+      8&QZ"N		!*If output file is open then			!
+        EF		!*Close the output file with no output		!
+        8^_&QZUZ	!*Reset output file open bit			!
+      '			!*End of output file is open processing		!
+      @^UA%@:EW/%	!*QTA <= all characters between "%" s		!
+      GS		!*Get the file string				!
+      ^Y:XA		!*Append it to EW command			!
+      ^YK		!*Delete file string from text buffer		!
+      @:^UA%/%		!*Append all char between "%" s to QTA		!
+      MA		!*Open a new output file			!
+      "S		!*If successful open then			!
+        G*		!*Pull in complete file spec			!
+        ^YXT		!*QTT <= output filespec			!
+        ^YK		!*Kill filespec from buffer			!
+        2#8#QZUZ	!*Mark as modified; output file open		!
+      '			!*End of open success test			!
+      MO		!*Update  the status line			!
+      F<		!**** Go get next command			!
+    '			!*End of ^X-^W execution			!
+
+    QT-24"E		!*If command is a ^X-^X then 			!
+      .UN		!*QN <= current pointer loc (next mark) 	!
+      QMJ		!*Jump to marked position 			!
+      QNUM		!*Set mark at previous pointer loc 		!
+      1^_&QZUZ		!*No kill append 				!
+      F<		!**** Go get next user command 			!
+    '			!*End of ^X-^X command execution 		!
+   
+    QT-27"E		!*If command is ^X-ESC then 			!
+      MQ		!*Re-execute TECO macro in Q9			!
+      F<		!**** Go get next command 			!
+    '			!*End of ^X-ESC command execution 		!
+   
+    QT-^^A"E		!*If command is ^X A then			!
+      4&QZ"N		!*If input file is open then			!
+        ^E"N		!*If previous read found a form feed then	!
+          .UA		!*QAN <= current pointer position		!
+          ZJ		!*Jump to end of buffer				!
+          12@I%%	!*Insert a form feed				!
+          QAJ		!*Jump back to original point			!
+        '		!*End of form feed append if necessary		!
+        A		!*Append from input file			!
+      '			!*End of append					!
+      F<		!**** Go get next command			!
+    '			!*End of ^X A command execution			!
+
+    QT-^^E"E		!*If command is ^X-E then			!
+      -:QWUY		!*Initialize up-counter for # of commands	!
+      -QOUX		!*Initialize macro repeat count			!
+      F<		!**** Go get next command			!
+    '			!*End of ^X-E execution				!
+
+   QT-^^N"E		!*If command is ^XN then			!
+      .UE		!*QEN <= Current pointer location		!
+      MR		!*Get cursor line number			!
+      -1UB		!*QBT <= # lines to get to home position	!
+      -QBL		!*Jump to start of first line on screen		!
+      .UA		!*QAN <= Char pointer value at home position	!
+      QEJ		!*Jump back to original location		!
+      QA"N		!*If home position is not top of buffer then	!
+        8&QZ"N		!*If output file is open then			!
+          .-QAUE	!*Adjust pointer to current location before del	!
+          B,QAP		!*Output from top to home to output file	!
+          B,QAD		!*Delete from buffer				!
+          QEJ		!*Go to original location			!
+        '		!*End of output file open processing		!
+      '			!*End of make room execution			!
+      F<		!**** Go get next command			!
+    '			!*End of ^XN processing				!
+
+    QT-^^Q"E		!*If command is ^X-Q then			!
+      QY"L		!*If macro command fetch in progress then	!
+        MP		!*Get next command from terminal stream only	!
+        QQ"E		!*If response is ^G then			!
+          F<		!**** Go get next command			!
+        '		!*End of ^G response processing			!
+        QT-32"N		!*If next input is not space char then		!
+          0UY		!*Set macro fetch counter to zero to force exit	!
+          %X		!*Increment macro repeat counter		!
+          "L		!*If more macro loops left to be done then	!
+            -:QWUY	!*Restore command counter contents		!
+          '		!*End of macro command counter restore		!
+        '		!*End of macro abort test			!
+      '			!*End of macro command query operation		!
+      F<		!**** go get next command			!
+    '			!*End of ^X-Q execution				!
+
+    QT-^^T"E		!*If command is ^X T then			!
+      QY"L		!*If macro command fetch in progress then	!
+        -1W		!*Update terminal screen			!
+      '			!*End of commmand fetch in progress execution	!
+      F<		!**** Go get next command			!
+    '			!*End of ^X T execution				!
+
+    QT-^^*"E		!*If command is ^X-*				!
+      :QW"N		!*If macro string is not null then		!
+        ^^HMM		!*Send cursor home				!
+        ^^JMM		!*Clear the screen				!
+        :GW		!*Show user the current macro string		!
+        16#QZUZ		!*Inhibit screen update				!
+        MX		!*Get the next character			!
+        ^[		!*Discard any returned numeric value		!
+        16^_&QZUZ	!*Reset screen update inhibit bit		!
+        MO		!*Refresh the status line			!
+        32^T		!*Force TECO to update screen			!
+      '			!*End of non null macro string processing	!
+      F<		!**** Go get next command			!
+    '			!*End of X-* processing				!
+
+    QT-^^("E		!*If command is ^X-( then			!
+      32#QZUZ		!*Set macro collection bit in control word	!
+      0,0XW		!*Purge previous macro (if any)			!
+      MO		!*Update the status line			!
+      F<		!**** Go get next command			!
+    '			!*End of ^X-( execution				!
+
+    QT-^^)"E		!*If command is ^X-) then			!
+      32&QZ"N		!*If macro collection bit is set		!
+        GW		!*Get the current EMACS macro			!
+        ^Y-2XW		!*Push back minus the ^X and ) char		!
+        ^YK		!*Delete from text buffer			!
+        32^_&QZUZ	!*Reset macro collection bit in control word	!
+        MO		!*Update the status line			!
+      '			!*End of macro collection termination		!
+      F<		!**** Go get next command			!
+    '			!*End of ^X-) execution				!
+
+    QT-^^="E		!*If command is ^X = then			!
+      .UA		!*QAN <= current pointer position		!
+      J			!*Jump to beginning of buffer			!
+      1UB		!*QBN <= initial line number			!
+      <			!*Start line count iteration			!
+        L		!*Go down one line				!
+        .-QA;		!*If past original start point then exit iter	!
+        %B		!*Increment the line count			!
+      >			!*End of line count iteration			!
+      ."G		!*If buffer is not empty then			!
+        .-QA"E		!*If at original start point then		!
+          -1A-10"E	!*If previous character is a LF then		!
+            %B		!*Increment the line count again		!
+          '		!*End of CRLF test				!
+        '		!*End of past start point test			!
+      '			!*End of buffer not empty test			!
+      QAJ		!*Jump back to original start point		!
+      0L		!*Go to start of that line			!
+      QA-.UC		!*QCN <= number of characters over		!
+      QAJ		!*Jump back to original start point		!
+      ^^HMM		!*Send cursor to home position			!
+      ^^JMM		!*Clear the screen				!
+      @^A%Line%		!*Show line number header			!
+      32^T		!*Send blank to terminal			!
+      QB=		!*Show value to user				!
+      @^A%After%	!*Send char number header			!
+      32^T		!*Send blank to terminal			!
+      @^A%character%	!*Send rest of char number header		!
+      32^T		!*Send another blank to terminal		!
+      QC=		!*Show value to user				!
+      16#QZUZ		!*Inhibit screen update during next cmd fetch	!
+      MX		!*Get next char from command stream (ignored)	!
+      ^[		!*Discard any returned numeric value		!
+      16^_QZUZ		!*Enable screen updates again			!
+      MO		!*Refresh the status line			!
+      32^T		!*Force TECO to update screen on next -1W	!
+      F<		!**** Go get next command			!
+    '			!*End of ^X = command execution			!
+
+    7MM			!*^X command not found; ring bell 		!
+    32768W		!*Forget that we rang terminal's bell (she did)	!
+    F<			!**** Go get next command 			!
+
+
+!* ESC-X MACROS START HERE						!
+   
+    !$X!		!*Begin ESC-X macros				!
+    MX			!*Get next command character			!
+
+    ^[			!*Discard any returned numeric value		!
+
+    QT"V		!*If char is lower case alpha then 		!
+      QT-32UT		!*Convert to upper case 			!
+    '			!*End of case conversion 			!
+   
+    QT-7"E		!*If command is an ESC-X-^G then		!
+      F<		!**** Go get next command			!
+    '			!*End off ESC-X-^G execution			!
+
+    QT-^^C"E		!*If command is an ESC X C then			!
+      3:W"E		!*If see-all mode is off then			!
+        1,3:W		!*Turn see-all mode on				!
+      |			!*Else if see-all mode is on then		!
+        0,3:W		!*Turn see-all mode off				!
+      '			!*End of see-all state flip-flop		!
+      F<		!**** Go get next command			!
+    '			!*End of ESC X C processing			!
+
+    QT-^^D"E		!*If command is an ESC X D then			!
+      ^BUA		!*QAN <= code for current date			!
+      QA/512UB		!*QBN <= current year				!
+      QA-(QB*512)/32UC	!*QCN <= current month				!
+      QA-(QA/32*32)UD	!*QDN <= current day				!
+      QC-10"L		!*If month is less than 10 then			!
+        @I%0%		!*Insert a leading 0 in text buffer		!
+      '			!*End of leading zero insertion			!
+      QC\		!*Insert month in text buffer			!
+      @I%-%		!*Insert "-" character in text buffer		!
+      QD-10"L		!*If day is less than 10 then			!
+        @I%0%		!*Insert a leading zero				!
+      '			!*End of leading zero insertion			!
+      QD\		!*Insert day in text buffer			!
+      @I%-%		!*Insert a "-" in text buffer			!
+      QB-10"L		!*If year is less than 10 then			!
+        @I%0%		!*Insert a "0" in text buffer			!
+      '			!*End of leading zero insertion			!
+      QB\		!*Insert year in text buffer			!
+      1^_&QZ#2UZ	!*No append next kill; buffer modified		!
+      F<		!**** Go get next command			!
+    '			!*End of ESC X D execution			!
+
+    QT-^^O"E		!*If command is an ESC X O then			!
+      @^UL%String:%	!*QLT <= "String:"				!
+      @32:^UL%%		!*QLT <= "String: "				!
+      MN		!*Get the search string				!
+      "U		!*If string fetch failed then			!
+        32768W		!*Tell TECO to forget we fiddled with screen	!
+        F<		!**** Go get next command			!
+      '			!*End of fetch failed trap			!
+      .UE		!*Save current buffer pointer			!
+      @:S%^EQS%		!*Find an occurance of string (if any)		!
+      "S		!*If there is at least one then			!
+        ^^HMM		!*Send cursor home				!
+        ^^JMM		!*Erase screen					!
+        <		!*Begin iteration to display occurances		!
+          0L		!*Go to start of line containing occurance	!
+          T		!*Show line to user				!
+          L		!*Resume search at next line			!
+          @:S%%		!*Look for next occurance			!
+          ;		!*Exit iteration when no more found		!
+        >		!*End of search & show loop			!
+        QEJ		!*Return to original location			!
+        16#QZUZ		!*Inhibit screen update during input		!
+        MX		!*Get next character from input stream		!
+        ^[		!*Discard any returned numeric value		!
+        16^_&QZUZ	!*Enable screen updates again			!
+        MO		!*Refresh status line				!
+        32^T		!*Force TECO to update screen on next -1W	!
+      '			!*End of occurances display when string found	!
+      F<		!**** Go get next command			!
+    '			!*End of ESC X O processing			!
+
+    QT-^^R"E		!*If command is an ESC X R 			!
+      0UB		!*Disable query					!
+      @O!QR!		!*Jump to query replace / replace common	!
+    '			!*End of ESC X R processing			!
+
+    QT-^^T"E		!*If command is an ESC X T then			!
+      ^HUA		!*QAN <= # seconds since midnight / 2		!
+      QA/1800UB		!*QBN <= # hours since midnight			!
+      QA-(QB*1800)/30UC	!*QCN <= # minutes in current hour		!
+      QA-(QA/30*30)*2UD	!*QDN <= # seconds in current minute		!
+      QB-10"L		!*If # hours is less than 10 then		!
+        @I%0%		!*Insert a "0" in text buffer			!
+      '			!*End of leading zero insertion			!
+      QB\		!*Insert # hours in text buffer			!
+      @I%:%		!*Insert a ":" in text buffer			!
+      QC-10"L		!*If # minutes is less than 10 then		!
+        @I%0%		!*Insert a leading 0 in text buffer		!
+      '			!*End of leading zero insertion			!
+      QC\		!*Insert # minutes in text buffer		!
+      @I%:%		!*Insert ":" character in text buffer		!
+      QD-10"L		!*If # seconds is less than 10 then		!
+        @I%0%		!*Insert a leading zero				!
+      '			!*End of leading zero insertion			!
+      QD\		!*Insert # seconds in text buffer		!
+      1^_&QZ#2UZ	!*No append next kill; buffer modified		!
+      F<		!**** Go get next command			!
+    '			!*End of ESC X T execution			!
+
+    7MM			!*ESC-X command not found; ring bell		!
+    32768W		!*Forget that we rang terminal's bell (she did)	!
+    F<			!**** Go get next command			!
+
+
+!*^Z MACROS START HERE							!
+   
+    !CZ!		!*Begin ^Z macros				!
+    MX			!*Get next command character			!
+   
+    ^[			!*Discard any returned numeric value		!
+
+    QT"V		!*If 2nd char is lower case alpha then 		!
+      QT-32UT		!*Convert to upper case 			!
+    '			!*End of case conversion 			!
+   
+    QT-6"E		!*If command is ^Z-^F then			!
+      GT		!*Get filename 					!
+      1^_&QZ#2UZ	!*No append; modified				!
+      F<		!**** Go get next command			!
+    '			!*End of ^Z-^F execution			!
+
+    QT-7"E		!*If command is an ^Z-^G then			!
+      F<		!**** Go get next command			!
+    '			!*End off ^Z-^G execution			!
+
+    QT-26"E		!*If command is ^Z-^Z then close files and exit	!
+      8&QZ"N		!*If output file is open then			!
+        2&QZ"N		!*If buffer has been modified then		!
+          EC		!*Move rest of file to output and close file	!
+        |		!*Else if buffer has not been modified then	!
+          EK		!*Kill the output file				!
+        '		!*End of output open processing			!
+      |			!*Else if output file is not open then		!
+        2&QZ"N		!*If buffer has been modified then		!
+          MU		!*Take steps to save or purge buffer		!
+          "U		!*If aborted then				!
+            F<		!**** Go get next command			!
+          '		!*End of abort trap				!
+        '		!*End of modified buffer test			!
+      '			!*End of output file open/closed processing	!
+      ^^HMM		!*Send cursor home				!
+      ^^JMM		!*Erase screen					!
+      HK		!*Purge the buffer to insure exit capability	!
+      EX		!*Exit the editor				!
+    '			!*End of ^Z-^Z execution			!
+
+    7MM			!*ESC-X command not found; ring bell		!
+    32768W		!*Forget that we rang terminal's bell (she did)	!
+    F<			!**** Go get next command			!
+   
+  >			!*						!
+~
+   
+!* END OF MACRO LOADS INTO Q REGISTERS					!
+   
+HK			!*Purge the buffer				!
+MI			!*Begin execution of infinite iteration		!
+!BY!			!*Jump in point for non-EMACS bypass		!
+

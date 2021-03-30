@@ -1,0 +1,2048 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                            E  M  A  C  S  1  1
+
+
+                     U  S  E  R  S     M  A  N  U  A  L
+
+
+                        Screen oriented text editor
+
+
+
+
+                           Version 1.4 (Vax/RSX)
+
+
+                               by Fred Fish
+
+
+
+
+                               (Preliminary)
+
+
+                                 18-Jun-82
+
+
+
+
+
+
+                                   CHAPTER 1
+
+                                  INTRODUCTION
+
+
+
+
+           EMACS11 implements a small but powerful subset of the popu-
+      lar  EMACS  editor  originally  developed  at  M.I.T.  This is a
+      screen oriented editor, which unlike some others (VT52 or VTEDIT
+      for  example),  does  not  make use of the auxilary keypad.  All
+      command keys are placed where  they  are  the  most  convenient,
+      under  the  user's fingertips, via the use of control characters
+      and escape sequences.  Cursor keys are fine  for  some  applica-
+      tions  but  moving the entire hand eight inches to reach them is
+      not conducive to high speed editing.
+
+           The EMACS11 command set is easily learned; beginners can be
+      doing  useful  editing in a matter of hours with only a dozen or
+      so commands.  Since the source code is readily available (in the
+      form  of TECO macros) internal user modifications and extensions
+      are easily implemented.
+
+
+
+
+
+
+                                   CHAPTER 2
+
+                            THE EMACS11 ENVIRONMENT
+
+
+
+      2.1  EMACS11 versus EMACS
+
+
+           All references to EMACS are to the full  scale  version  of
+      the  EMACS editor.  References to EMACS11 are to the PDP-11 sub-
+      set written in TECO.
+
+
+
+      2.2  NOTES FOR VAX USERS
+
+
+           Due to VMS's trapping of a wide variety  of  control  char-
+      acters,  certain commands have been transported to other control
+      characters until a VAX guru tells me how to turn off this inhos-
+      pitable trait.  In particular, the VAX version uses:
+
+           1.  ^H for ^X
+
+           2.  ^I for ^Q
+
+           3.  ^T for ^S
+
+           4.  ^U for ^Y
+
+           Be warned that you may experience difficulities with multi-
+      ple  command  sequences  on  the  VAX if any of the above listed
+      characters are involved.
+
+           LATE NEWS FLASH ...  Just found out about the SET  TERMINAL
+      /PASSALL  command  (what  can I say, I'm new to VAX).  This will
+      let EMACS11 get all the characters you type but has  the  disad-
+      vantage  of  making your interaction with the operating system a
+      royal pain.  Now maybe someone will show me how to do the  equi-
+      valent from a moving program.
+
+           The easiest way I have found to use the PASSALL and  NOPAS-
+      SALL  terminal characteristics is to include the following lines
+      in my LOGIN.COM file:
+
+
+                  PA :== SET TERMINAL PASSALL
+                  NP :== SET TERMINAL NOPASSALL
+
+
+THE EMACS11 ENVIRONMENT                                                 Page 2-2
+
+
+
+
+      Then before invoking EMACS use the PA  command  and  immediately
+      after exiting use the NP command.
+
+
+
+      2.3  CONVENTIONS
+
+
+           This section describes some of the conventions used to des-
+      cribe the EMACS11 command set and the command operations.
+
+
+
+      2.3.1  Control characters
+
+
+           All references to control characters  will  use  the  carat
+      character  ("^"), followed by the corresponding letter, to indi-
+      cate a control character.  For example "^A" stands for the  con-
+      trol/A  character,  which  is typed by simultaneously depressing
+      the "CTRL" key and the "A" key.
+
+
+
+      2.3.2  Escape character
+
+
+           The escape character, produced by depressing the "ESC" key,
+      will  be  symbolized by the "$" symbol.  The "dollars character"
+      occurs seldom enough that confusion is not  usually  a  problem.
+      Thus  "$X" stands for a two character sequence which is typed by
+      first depressing the "ESC" key and then the "X" key.  Note  that
+      both keys ARE NOT depressed simultaneously.
+
+
+
+      2.4  COMMAND CLASSES
+
+
+           EMACS11 commands are divided up into a basically hierarchi-
+      al structure with the following classes:
+
+           1.  Control character commands
+
+           2.  Escape character commands
+
+           3.  ^X commands
+
+           4.  $X commands
+
+
+
+THE EMACS11 ENVIRONMENT                                                 Page 2-3
+
+
+
+
+      2.5  DEFINITIONS
+
+
+           This section defines some of the terms  for  which  precise
+      definitions  are required, in order to insure proper command op-
+      eration or clarify their descriptions.
+
+
+
+      2.5.1  Cursor
+
+
+           The cursor is the flashing underscore which appears beneath
+      displayed text buffer characters (or flashing box which overlays
+      characters).  The cursor is considered to be "at" the  character
+      under which it is currently located.
+
+
+
+      2.5.2  Pointer
+
+
+           The text buffer pointer is considered to be located between
+      the  character  where  the  cursor is at, and the previous char-
+      acter, if any.  Note that EMACS11 displays a graphics  character
+      to  indicate  the end of the text buffer.  This character is not
+      actually in the text buffer, even though the cursor may be posi-
+      tioned to it.  When the cursor is at this special graphics char-
+      acter, the pointer is at the end of the text buffer.
+
+
+
+      2.5.3  Word
+
+
+           A word is any non-null string of characters which  contains
+      no  imbedded blanks, tabs, line feeds, carriage returns, or form
+      feeds.  Thus "++??"  is just as valid a  word  as  "cat".   Note
+      that  any punctuation at either end of a word is also considered
+      to be part of the word.
+
+
+
+      2.5.4  Sentence
+
+
+           A sentence is any non-null string of words  with  the  last
+      character  of  the last word being one of the following punctua-
+      tion symbols:
+
+           1.  Period => "."
+
+           2.  Exclaimation mark => "!"
+
+THE EMACS11 ENVIRONMENT                                                 Page 2-4
+
+
+
+
+           3.  Question mark => "?"
+
+
+
+      2.5.5  Paragraph
+
+
+           A paragraph is any non-null string of sentences  which  has
+      one of the following paragraph delimiters at each end:
+
+           1.   Two or more successive  CRLFs  (carriage  return  line
+               feed sequences)
+
+           2.   A form feed
+
+           3.   The top of the text buffer
+
+           4.   The bottom of the text buffer
+
+
+
+      2.5.6  Page 
+
+
+           A page is any text (may be null, or no text) which has  one
+      of the following page delimiters at each end:
+
+           1.   A form feed
+
+           2.   An imaginary "beginning of file mark"
+
+           3.   An end of file
+
+           Note that a page may be so large that  it  cannot  all  fit
+      into the text buffer at one time, in which case EMACS11 commands
+      which input or output pages treat the text currently in the text
+      buffer  as one page, and the text in the input or output file as
+      another page.  Conversely, several small pages may fit into  the
+      text  buffer simultaneously.  Normal TECO treatment of formfeeds
+      applies to EMACS11 commands except where noted.
+
+
+
+      2.5.7  Mark
+
+
+           The mark is an imaginary "place holder" which may be  moved
+      about in the text buffer at will.  It is initially at the top of
+      the text buffer, until explicitly moved somewhere else.  Certain
+      EMACS11  commands,  such as those which move pages in and out of
+      the text buffer, affect the location of  the  mark  even  though
+      they are not mark manipulation commands.
+
+
+
+THE EMACS11 ENVIRONMENT                                                 Page 2-5
+
+
+
+
+      2.5.8  Region
+
+
+           A region is any text which is delimited by the mark and the
+      current  pointer.  Such text is commonly refered to as a "marked
+      region".
+
+
+
+      2.6  DISPLAY CHARACTERISTICS
+
+
+
+
+      2.6.1  The status line
+
+
+           When you first invoke EMACS11, via the EMA[cs] RSX11M  sys-
+      tem command, your terminal's screen will be cleared and a status
+      line will appear in the next to the last  line  at  the  bottom.
+      This  line,  maintained by EMACS11, contains various information
+      about the current state of the  editor,  including  the  version
+      number,  the  mode, and the current input or output file.  If no
+      input or output file is open, the file specification is omitted.
+      If  only  an  input file is open, the file specification for the
+      input file is shown.  If both an input and output file are open,
+      the file specification for the output file is shown.
+
+
+
+      2.6.2  The prompt line
+
+
+           The last line of the screen is used as a combination prompt
+      line  and  error  message  line.  Very few EMACS11 commands will
+      prompt for input since EMACS11 is designed to be command driven,
+      not  ask  you  a bunch of questions.  Those that do will use the
+      last line.  Other commands will also use this  line  to  confirm
+      that  an  operation has been done, if such an operation does not
+      cause a visible change in the text buffer  (such  as  setting  a
+      mark).
+
+
+
+      2.6.3  Viewing information
+
+
+           Certain EMACS11 commands allow you to "view" various  types
+      of  information.  The view mode is characterized by three steps;
+      (1) the screen being cleared, (2) the desired information  being
+      shown, and (3) the text buffer window being restored.  View type
+      commands do not change the text buffer or  the  current  pointer
+      location.   EMACS11  discards  the  character used to end step 2
+THE EMACS11 ENVIRONMENT                                                 Page 2-6
+
+
+
+
+      (any key depression except S or Q while screen  is  being  writ-
+      ten).
+
+
+                                    NOTE
+
+           If a given view commands seems to perform erratically,
+           sometimes  working  and  sometimes not, it is probably
+           because if the requested information does  not  exist,
+           the command is ignored.
+
+
+
+
+
+      2.7  REPEAT COUNTS
+
+
+           Most commands for which a repeat count makes sense  can  be
+      preceded  with  a repeat count of the form $.  For exam-
+      ple, $10N will move the pointer down  10  lines.   Also,  $100XE
+      will execute the previously defined macro 100 times.
+
+
+                                    NOTE
+
+           In particular, "commands" which do nothing except  in-
+           sert their character into the text buffer (such as the
+           "A" command) can also be preceded with a repeat count.
+           This  the  command  $80* will insert 80 "*" characters
+           into the text buffer at the current pointer location.
+
+
+
+
+
+      2.8  UNIMPLEMENTED COMMANDS
+
+
+           It is possible that this manual may describe EMACS commands
+      which  have  not yet been inplemented in the EMACS11 macros.  If
+      this occurs, it is because it was felt that  no  self-respecting
+      subset should be without that particular command, or that it was
+      important enough to "reserve" it's future implementation's  name
+      by  including  it  in  this manual.  Note that any unimplemented
+      command  will  simply  be  ignored  (while  also   ringing   the
+      terminal's  bell).   As of the current date only a small percen-
+      tage of the commands in this manual have yet to be implemented.
+
+
+
+
+
+
+                                   CHAPTER 3
+
+                               INSTALLING EMACS11
+
+
+
+
+           The EMACS11 distribution kit includes all  files  necessary
+      to  build  a version of TECO which has been slightly modified to
+      support EMACS11.  The TECO source files are from the  TECO  ver-
+      sion 35 distribution kit.
+
+
+
+      3.1  MODIFYING TECO; VERSION 35
+
+
+           One of the things which must be modified  in  TECO  is  the
+      display  of the new task size when an extend task is successful.
+      This causes a hardware scrolling of the VT52, which has the  ef-
+      fect of moving the status line up into the text area, and gener-
+      ally screwing up the display.  The modification simply  comments
+      out the code responsible for displaying the new task size.
+
+
+
+      3.2  REQUIRED TECO MACRO FILES
+
+
+           The following TECO macro files are used:
+
+           1.   EMACS11.TEC -- This is the source file for  the  EMACS
+               editor,  in  the  form of TECO macros.  It must be pro-
+               cessed (purified) by BLDEMACS.TEC before it  is  useful
+               as a macro file.
+
+           2.    BLDEMACS.TEC  --  This  macro   file   purifies   the
+               EMACS11.TEC  file by stripping out all extraneous char-
+               acters such as comments, blanks, and tabs.  The result-
+               ing  macro code is approximate 4K characters and is the
+               EMACS11 editor.
+
+
+
+               3.3  DEVIATIONS FROM EMACS
+
+
+                    The realities of implementing an EMACS  subset  on
+               the PDP-11, along with restrictions imposed by the TECO
+               "programming language", have resulted in various  minor
+               deviations  of some EMACS11 commands from their equiva-
+INSTALLING EMACS11                                                      Page 3-2
+
+
+
+
+               lent EMACS operation.  In general though,  such  devia-
+               tions  are  quite minor, and only apparent to those who
+               are intimately familiar with the EMACS command set.
+
+                    One area where deviations or extensions  are  very
+               apparent is in the handling of file I/O.  The EMACS im-
+               plementation is usually capable of handling a  file  in
+               its entirity, with any required paging operations invi-
+               sible to the user.  The EMACS11  command  set  includes
+               some commands which manipulate pages.
+
+
+
+
+
+
+                                   CHAPTER 4
+
+                           CONTROL CHARACTER COMMANDS
+
+
+
+
+           Control character commands are  invoked  by  simultaneously
+      holding down the "CTRL" key and the desired command key.
+
+
+
+      4.1  ^A -- Go to start of line
+
+
+           The ^A command moves the pointer to the  beginning  of  the
+      current  line  on  the screen.  If the pointer is already at the
+      beginning, it has no effect.  
+
+
+
+      4.2  ^B -- Go back one character
+
+
+           The ^B command moves the pointer back one character in  the
+      text.   Note  that  the end of the line delimiter which is input
+      with the RETURN key actually consists of two characters, a  car-
+      riage  return (CR) and a line feed (LF).  Thus if you are at the
+      beginning of the line and issue the ^B command, the pointer will
+      be  placed between the CR and the LF characters, which can cause
+      some confusion for beginners since the cursor will seem to  jump
+      to  the  beginning of the previous line on the first ^B and then
+      the end of that line on the second ^B.  (No you didn't find your
+      first bug...sorry.)
+
+
+
+      4.3  ^D -- Delete next character
+
+
+           The ^D command deletes the character immediately after  the
+      current  pointer location.  If there is no character there, when
+      at the end of the buffer for example, it is ignored.  Note  that
+      this  operation  is  different  than that produced by the DELETE
+      key, which deletes the character before the current pointer  lo-
+      cation.  In general you will find that both commands are equally
+      useful, and the appropriate command usage becomes second  nature
+      with time.
+
+
+
+CONTROL CHARACTER COMMANDS                                              Page 4-2
+
+
+
+
+      4.4  ^E -- Go to end of line
+
+
+           The ^E command moves the pointer to the end of the  current
+      line,  just  prior  to the CRLF (carriage return/line feed).  If
+      the pointer is already positioned before a CRLF, the command  is
+      ignored.
+
+
+
+      4.5  ^F -- Go forward one character
+
+
+           The ^F command moves the  pointer  forward  one  character.
+      When  at  the  end  of  the text buffer this command is ignored.
+      Note that the comments for the complimentary command ^B apply to
+      the ^F command.
+
+
+
+      4.6  ^G -- PANIC BUTTON
+
+
+           The ^G command is your PANIC BUTTON.  It is generally  use-
+      ful  in  getting you out of places you don't want to be.  It can
+      be used at any time you are not at TECO level,  and  will  abort
+      any  half entered commands.  The terminal's bell is used to con-
+      firm your ^G has been recognized.
+
+
+
+      4.7  ^K -- Kill to end of line
+
+
+           The ^K command performs one of two functions depending upon
+      the  current  pointer  position.  When the pointer is not at the
+      end of the current line (immediately before the CRLF)  then  the
+      rest  of  the  line up to, but not including, the CRLF is erased
+      from the text buffer and either  placed  into  the  kill  buffer
+      (successive  kills  without  cursor  movement commands append to
+      anything currently in the kill buffer).  When the pointer is  at
+      the end of the current line, only the CRLF is killed.
+
+
+
+      4.8  ^N -- Go down to next line
+
+
+           The ^N command attempts to move the cursor  directly  down-
+      wards to the same relative location in the next line.  This will
+      not always be successful, if for example the next line is short-
+      er  or  contains  tabs below the current position.  See the com-
+      ments in the complementary command ^P
+CONTROL CHARACTER COMMANDS                                              Page 4-3
+
+
+
+
+      4.9  ^O -- Open blank line
+
+
+           The  ^O  command  "opens"  a  blank  line  for   insertion.
+      Actually,  all  it  does is insert a CRLF at the current pointer
+      position, but unlike simply entering a CRLF with the RETURN key,
+      leaves  the  pointer  positioned before the CRLF, just where you
+      want it for insertion of text.  When used at  the  beginning  of
+      the  current  line,  the effect seen by the user is that a blank
+      line is created by moving the current line downwards.  When used
+      inside  a  line, the effect seen is that the rest of the line is
+      moved downwards to a new line by itself, and the user  can  then
+      finish the current line with different text.
+
+
+                        *** NOT OPERABLE ON VAX ***
+
+
+
+      4.10  ^P -- Go up to previous line
+
+
+           The ^P command attempts to move the  pointer  directly  up-
+      wards  to  the  save relative position in the previous line.  If
+      this fails, when the previous line is shorter that  the  current
+      line  for example, the pointer is positioned as far to the right
+      as possible without passing the location in the  original  line.
+      Tabs  and  different  line lengths will effect where the pointer
+      ends up.  Experiment with the command for further information.
+
+
+
+      4.11  ^Q -- Quote next character
+
+
+           The ^Q command tells EMACS11  to  use  the  next  character
+      typed as text.  The control and escape characters can be entered
+      into the text buffer by simply preceding them with a ^Q command.
+      Note  that  like most other commands, the ^Q command can be pre-
+      ceded with a repeat count of the form ESC.
+
+
+                            *** Is ^I on VAX ***
+
+
+
+      4.12  ^R -- Reverse search
+
+
+           The ^R command does a reverse incremental search.   Reverse
+      means  that the search progresses backwards from the current po-
+      inter location.  Incremental means that  the  search  begins  as
+      soon as the first character after the ^R is typed, and continues
+CONTROL CHARACTER COMMANDS                                              Page 4-4
+
+
+
+
+      as each search string character is input.  That is, ^R  then  an
+      "A"  would  position the pointer to immediately before the first
+      "A" character preceding the current  pointer  location.   Typing
+      another  "A"  character would search for an position the pointer
+      immediately before the first "AA" string preceding the  original
+      pointer  location  (not current pointer location).  This type of
+      searching may sound rather confusing on paper but in practice is
+      extremely  useful,  since only the smallest number of characters
+      required to locate a given string need be entered.
+
+           The ^R search sequence is terminated by the  first  control
+      character entered (I.E.  an EMACS11 command) which is not anoth-
+      er ^R or a ^S, or by the first ESC.  Note  that  if  an  ESC  is
+      used, it DOES NOT count as the first character in an EMACS11 es-
+      cape sequence command.  It  simply  terminates  the  search  and
+      leaves the pointer at it's current position.
+
+           The ^G command has a special  significance  inside  the  ^R
+      search  operation.   It aborts the search and leaves the pointer
+      at its original location, before invocation of the  ^R  command,
+      and  not  at  the current search location.  So if you don't find
+      what you are looking for, use the ^G command to abort the search
+      and  put  you  back  where  you started from.  Note that in this
+      usage the ^G does not ring the terminal bell.
+
+           If the first character after a ^R  command  is  another  ^R
+      then the previous successful EMACS11 search string is resurrect-
+      ed and used for the current search.  If any characters intervene
+      between  the ^R which starts the search, and the second ^R, then
+      the current search string is reused  which  has  the  effect  of
+      finding the next occurance of that string.  I.E.  if you input a
+      sequence of the form "^R A B O ^R ^R ^R" then, assuming that you
+      had  some "ABO" strings to look for, the pointer will end up im-
+      mediately prior to the fourth occurance backwards from the  ori-
+      ginal  location.  Again, experimentation will fix these concepts
+      in mind much firmly than a lengthy discourse.   These  featurers
+      are  mentioned for completeness of the command definition and to
+      make the reader aware of their existence.
+
+
+                                    NOTE
+
+           The ^R command is not yet full functional, however the
+           forward search command ^S is.
+
+
+
+
+
+CONTROL CHARACTER COMMANDS                                              Page 4-5
+
+
+
+
+      4.13  ^S -- Forward search
+
+
+           The ^S command functions identically to the ^R command with
+      the  exception that the search procedes in the FORWARD direction
+      and the pointer is left AFTER the search string.  See  the  com-
+      ments in the ^R command definition for further information.
+
+
+
+      4.14  ^V -- Move window down
+
+
+           The ^V command moves the window into the text buffer  down-
+      wards  by  the  appropriate  number of lines to cause a two line
+      overlap with the previous window.  The cursor is left at the be-
+      ginning  of  the  14th  line in the window, or at the end of the
+      buffer if there is nothing else left to display.
+
+
+
+      4.15  ^W -- Kill marked region
+
+      The ^W command kills the currently marked  region  (see  REGIONS
+      section  for  defintion) and puts it into, or appends it to, the
+      kill buffer.  One way to move large blocks of text around is  to
+      place  the text in a marked region, kill it with the ^W command,
+      go to the new location, and unkill it with  the  ^Y  (yank  kill
+      buffer)  command.   If the text buffer is very full this command
+      is the frequent source of "memory overflow" aborts back to  TECO
+      level.   If  this  occurs, then use the "M I ESC ESC" command to
+      return to EMACS11, and the appropriate EMACS11 commands to write
+      out portions of your text buffer to the output file.
+
+
+
+      4.16  ^Y -- Unkill previous kill
+
+
+           The ^Y command performs the "unkill" operation by restoring
+      the  contents  of the kill buffer at the current location.  Note
+      that the kill buffer is not effected, so one way of  duplicating
+      a  block  of  text is to kill it with the ^K or ^W commands, and
+      then unkill it a number of times with the ^Y command.   The  po-
+      inter  is  left  after  the unkilled text.  If the unkilled text
+      consists of a large number of lines, successive ^Y commands  may
+      appear  to have no effect (since the screen does not change) but
+      appearances can be deceiving.  (Ya been warned!)
+
+
+
+
+
+
+                                   CHAPTER 5
+
+                        SINGLE CHARACTER ESCAPE COMMANDS
+
+
+
+
+           These commands are invoked by first hitting the ESC key and
+      THEN  the given command key.  DO NOT hold the ESC key down while
+      simultaneously pressing the command key.
+
+
+
+      5.1  $A -- Go back to sentence beginning
+
+
+           The $A command searches backwards, from the current pointer
+      position,  for  the first occurance of a sentence delimiter (see
+      DEFINITIONS section for exact definition of  a  sentence  delim-
+      iter),  or  the  top of the text buffer, whichever occurs first.
+      The pointer is then moved to immediately before the next  alpha-
+      betic  character  (A-Z or a-z), provided it would no move beyond
+      the original location, in which case the command is aborted.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.2  $B -- Go back one word
+
+
+           The $B command searches backwards, from the current pointer
+      position,  for  the first occurance of a word delimiter (see DE-
+      FINITIONS section for exact definition of a word delimiter),  or
+      the top of the text buffer, whichever occurs first.  The pointer
+      is then moved to immediately before the  next  alphabetic  char-
+      acter (A-Z or a-z), provided it would not move beyond the origi-
+      nal location, in which case the command is aborted.
+
+
+
+      5.3  $C -- Capitalize next word
+
+
+           The $C command searches forward for the next word,  and  if
+      found  moves  the  pointer  to  just before its first character.
+      That character is then converted to upper case.  If no next word
+      exists the command is aborted.
+
+
+SINGLE CHARACTER ESCAPE COMMANDS                                        Page 5-2
+
+
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.4  $D -- Delete next word
+
+
+           The $D command searches forward for the next word,  and  if
+      found  deletes  it, and any blanks or tabs which precede it.  If
+      the pointer is currently positioned inside  a  word,  after  the
+      first character, then the search does not begin until the end of
+      that word.  If the seach fails, the pointer is left unchanged.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.5  $E -- Go forward to sentence beginning
+
+
+           The $E command searches forward for the next  occurance  of
+      the  beginning of a sentence, and if found, positions the cursor
+      on the first character of that sentence which is  not  a  white-
+      space  character.   If the search fails, the pointer is left un-
+      changed.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.6  $F -- Go forward one word
+
+
+           The $F command searches forward for the next word,  and  if
+      found  positions  the  cursor  on  its  first character.  If the
+      search fails the pointer is left unchanged.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.7  $G -- Go to specified line number
+
+
+           The $G command moves the pointer to the  beginning  of  the
+      line  specified by the repeat argument.  I.E., for this command,
+      the repeat argument is used to furnish the line number  to  move
+      to.   If  the repeat argument is omitted, the default value of 1
+      is used.  This command is not a standard EMACS command.
+
+
+
+SINGLE CHARACTER ESCAPE COMMANDS                                        Page 5-3
+
+
+
+
+      5.8  $H -- Mark paragraph
+
+
+           The $H command causes the mark to be positioned before  the
+      first  character of the current paragraph (the one which the po-
+      inter is currently in) and the pointer to  be  positioned  after
+      the last character of the current paragraph.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.9  $K -- Kill word
+
+
+           The $K command searches forward for the next word,  and  if
+      found  kills  it from the text buffer.  If the pointer must move
+      to get to start of the next word, then  the  word  replaces  the
+      current  kill  buffer  contents, otherwise it is appended to the
+      kill buffer.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.10  $L -- Lower case next word
+
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.11  $N -- Go to next page
+
+
+           The $N command first insures that both an input and  output
+      file  is open, and if so, writes out the current text buffer and
+      reads in the next page from the input file.   Normal  TECO  han-
+      dling  of  formfeeds is used, that is, if a form feed occurs the
+      read is terminated and the form feed is NOT put  in  the  buffer
+      (it  IS appended to the current buffer contents on the next pag-
+      ing operation).
+
+
+
+      5.12  $S -- Center text in screen
+
+
+
+                        *** NOT YET IMPLEMENTED ***
+SINGLE CHARACTER ESCAPE COMMANDS                                        Page 5-4
+
+
+
+
+      5.13  $T -- Exchange words
+
+
+           The $T command exchanges the words before and after the po-
+      inter,  and  leaves  the  pointer at the end of the second word.
+      The net effect is as if the pointer "dragged" the word before it
+      though  the  word  after it.  If the pointer is not currently at
+      the end of a word, it is backed up until it finds the end  of  a
+      word.   If no end of a word is found, the command is aborted and
+      the pointer is returned to its original location.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.14  $U -- Upper case next word
+
+
+
+
+      5.15  $V -- Move window up
+
+
+           The $V command tries to  move  the  window  into  the  text
+      buffer  up  by  sufficient  number of lines so that there is a 2
+      line overlap with the previous window.  When the current  window
+      is near the top of the buffer this may not be possible, in which
+      case the window is moved so that it displays the top 23 lines in
+      the text buffer.
+
+
+
+      5.16  $W -- Kill marked region
+
+
+           The $W command kills the current marked region  and  either
+      appends  it the current top of the kill stack, or pushes it onto
+      the kill stack, depending  upon  whether  the  pointer  has  not
+      moved, or has moved since the last kill.  
+
+
+
+      5.17  $Y -- Pop kill stack and unkill
+
+
+           When used immediately after a ^Y command,  the  $Y  command
+      wipes  the  last resurrected text from the buffer, pops the kill
+      stack, and resurrects the second most recent kill.  When used at
+      any  other time this command is ignored.  Note that the most re-
+      cent kill, which was popped off the kill stack, is discarded and
+      thus  lost  forever.  Also note that at this time the kill stack
+      is only two kills deep.
+SINGLE CHARACTER ESCAPE COMMANDS                                        Page 5-5
+
+
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.18  $Z -- Return to TECO level
+
+
+           The $Z command provides a "clean" way  to  return  to  TECO
+      level.   Once at TECO level you can issue whatever TECO commands
+      you wish then return to EMACS level with the MI$$ command.
+
+
+                                    NOTE
+
+           While at TECO level you must not change  the  contents
+           of  any of the alphabetic Q-registers (A-Z) or unpred-
+           ictable results will occur when  you  try  to  restart
+           EMACS.   Also,  any  changes you make via TECO will be
+           totally  unknown  to  EMACS.   Particularly  dangerous
+           changes  are  those  which open files, close files, or
+           change any of TECO's status words.  Those which simply
+           change  the  pointer  or  the text buffer contents are
+           safe.
+
+
+
+
+
+      5.19  $^Y -- Insert last TECO command
+
+
+           The $^Y command pulls the most recently defined  TECO  com-
+      mand  (defined  via  the  $$ command) into the text buffer.  The
+      TECO command is not effected.  This can be useful  for  interac-
+      tively testing TECO macros and when the correct operation is ob-
+      tained, pulling them into the text buffer and then writing  them
+      out  to  a file via the commands which append or prepend defined
+      regions to a specific file.
+
+
+
+      5.20  $^W -- Append next kill
+
+
+           The $^W command is provided to override the EMACS mechanism
+      which  causes the kill stack to be pushed when a new kill should
+      replace the most recent kill.  This occurs any time the  pointer
+      has  been moved since the last kill command.  By killing text in
+      one location, moving the pointer to another  location,  issueing
+      the $^W command, and killing some more text, you can concatenate
+      text, from two or more different areas of the  text  buffer,  in
+      the top of the kill stack.
+
+
+
+SINGLE CHARACTER ESCAPE COMMANDS                                        Page 5-6
+
+
+
+
+      5.21  $$ -- Enter TECO command
+
+
+           The $$ command prompts for a TECO command line  to  be  en-
+      tered,  and  then executes it.  The current version of TECO will
+      cause the terminal to perform hardware  scrolling  if  the  TECO
+      command  line  contains  any  character  which causes a new line
+      (such as form feed or line feed).  This will mess up the  status
+      line  and  you will need to trigger a screen refresh with the ^L
+      command.
+
+
+
+      5.22  $@ -- Set mark
+
+
+           The $@ command in EMACS11 is equivalent to the  ^@  command
+      in  EMACS.   Since  ^@ is actually the NULL character (ASCII 0),
+      which is ignored by TECO, this command had to be moved.  $@  was
+      available  (not  defined  in  EMACS) and seemed like the logical
+      choice.
+
+           The $@ command sets the mark equal to the  current  pointer
+      location.   At  present there is only one mark.  Moving the mark
+      destroys the previous mark, which is initially at the top of the
+      buffer.
+
+
+
+      5.23  $* -- View last TECO command
+
+
+           The $* command tests to see if any TECO  command  has  been
+      previously  defined.  If so, the screen is cleared and that com-
+      mand is displayed starting at the top of the  screen.   Pressing
+      any  key  erases the screen again and redisplays the text buffer
+      window.  The text buffer is no effected and the  character  used
+      to complete the command is discarded.
+
+
+
+      5.24  $% -- Query replace
+
+
+           The $% command searches forward from  the  current  pointer
+      location  to  find  the  next  occurance of the specified search
+      string (prompted for).  The screen is then updated to  show  the
+      current  pointer  position  and EMACS11 waits for the next char-
+      acter to be input.  If it is a blank (space bar depressed)  then
+      the  target  string  is  replaced with the specified replacement
+      string (which is also prompted for).  Depressing any  other  key
+      aborts  the  current  replacement  and the next occurance of the
+      string is searched for.  The command can be aborted at any  time
+SINGLE CHARACTER ESCAPE COMMANDS                                        Page 5-7
+
+
+
+
+      with  a ^G command, which returns the pointer to the location it
+      was at when the $% command was invoked.
+
+
+
+      5.25  $? -- Describe next command
+
+
+           The $?  command tells EMACS to search the appropriate files
+      for a definition of the EMACS command which follows it.  For ex-
+      ample, the command sequence "$?^A" will  view  documentation  of
+      the  ^A  command.   If the command sequence which follows the $?
+      command is not recognized, the help command is aborted.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.26  $[ -- Go to beginning of paragraph
+
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.27  $] -- Go to end of paragraph
+
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      5.28  $< -- Go to beginning of text buffer
+
+
+           The $< command moves the pointer to the top of the  current
+      text  buffer.   If  the pointer is already at the top, it has no
+      effect.
+
+
+
+      5.29  $> -- Go to end of text buffer
+
+
+           The $> command moves the pointer to the bottom of the  cur-
+      rent  text  buffer.  If the pointer is already at the bottom, it
+      has no effect.
+
+
+
+
+
+
+                                   CHAPTER 6
+
+                               CONTROL X COMMANDS
+
+
+
+
+           The ^X command sequences consist of the ^X command followed
+      by another character.
+
+
+                                    NOTE
+
+           On the VAX, ^X has temporarily been transported to the
+           ^H character.  Substitute ^H for all occurances of ^X.
+
+
+
+
+
+      6.1  ^X^L -- Lower case marked region
+
+
+           The ^X^L command converts all alphabetic  characters  (A-Z)
+      in the
+
+
+
+      6.2  ^X^N -- Get next page; with overlap
+
+
+           The ^X^N command moves all text above the currently displa-
+      yed  window  to  the output file, then reads in the next page of
+      the input file.  If a form feed is needed between pages,  it  is
+      inserted  into  the  text  buffer.  This command is particularly
+      useful for editing near page boundries, where you  may  need  to
+      jump back and forth between pages.
+
+
+
+      6.3  ^X^O -- Delete blank lines
+
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+CONTROL X COMMANDS                                                      Page 6-2
+
+
+
+
+      6.4  ^X^P -- Mark current page
+
+
+           The ^X^P command puts the pointer at the top of the  buffer
+      or  after the first form feed backwards from the current pointer
+      location, and puts the mark at the end of the  buffer  or  after
+      the next form feed forwards from the current pointer location.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      6.5  ^X^R -- Read in file
+
+
+           The ^X^R command causes the specified file to be opened for
+      input  only.   To open an output file you must use the ^X^W com-
+      mand, or make some change in the buffer and  then  try  to  exit
+      EMACS, at which point you will be given the option of saving the
+      buffer.
+
+
+
+      6.6  ^X^S -- Save file
+
+
+           The ^X^S command writes to the output file the current text
+      buffer contents and any remaining pages from the input file.  It
+      then closes the input and output files, reopens the output  file
+      with backup, and reads in the first page.
+
+
+
+      6.7  ^X^U -- Upper case marked region
+
+
+           The ^X^U command converts all alphabetic  characters  (A-Z)
+      in the
+
+
+
+      6.8  ^X^V -- Visit file
+
+
+           The ^X^V command opens a file, with backup, for both  input
+      and  output.  I.E., the output file specification is the same as
+      the input file specification except that the version  number  of
+      the output file is one greater than that of the input file.
+
+
+
+CONTROL X COMMANDS                                                      Page 6-3
+
+
+
+
+      6.9  ^X^W -- Write file
+
+
+           The ^X^W command closes any currently open output file  and
+      opens  the  specified file for output.  It performs no other ac-
+      tion.  This slightly different than the normal EMACS  definition
+      of the ^X^W command.
+
+
+
+      6.10  ^X^X -- Exchange mark and pointer
+
+
+           The ^X^X command exchanges the current  mark  and  pointer.
+      If  the  mark has not yet been set it defaults to the top of the
+      buffer.  This command is particularly useful for verifying  that
+      a  marked  region is really where you expect it to be.  A second
+      ^X^X restores the original mark and pointer locations.
+
+
+
+      6.11  ^XA  -- Append next page to buffer
+
+
+           The ^XA command simply appends the next page of  the  input
+      file  to the current buffer.  If no input file is currently open
+      then this command is ignored.
+
+
+
+      6.12  ^XE  -- Execute last EMACS11 macro
+
+
+           The ^XE command re-executes the last  EMACS  macro  defined
+      with  the ^X( and ^X) commands.  This command may be preceded by
+      a repeat count but be aware that EMACS macros execute relatively
+      slowly.   This does not mean you should not use them, since they
+      are one of the most powerful features of EMACS,  just  that  you
+      should  not  expect quick results.  Note the use of the ^XT com-
+      mand to toggle a screen update after each execution.
+
+
+                                    NOTE
+
+           At the present time EMACS  macros  CANNOT  be  nested.
+           That    is,   one   macro   cannot   define   another.
+           Indeterminate results will occur if you  try  to  nest
+           EMAC macros.
+
+
+
+
+
+CONTROL X COMMANDS                                                      Page 6-4
+
+
+
+
+      6.13  ^XI  -- Insert file at pointer
+
+
+           The ^XI command inserts the specified file at  the  current
+      pointer  location.   In  order  to insure that a memory overflow
+      does not occur  it  effectively  performs  a  simultaneous  ^X^S
+      EMACS11  command,  so  an output file must be open.  If not, the
+      ^XI command is simply ignored.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      6.14  ^XN  -- Output text above window
+
+
+           The ^XN command first insures that an output  file  exists,
+      and  if so, writes all text in the buffer above the current win-
+      dow to the output file.  This is very handy for making some room
+      in  the  buffer  when a significant portion is above the current
+      window.  If no output file exists, the command is ignored.
+
+
+
+      6.15  ^XQ  -- Query inside EMACS11 macro
+
+
+           When encountered inside an EMACS  macro,  the  ^XQ  command
+      halts  execution  and waits for the next character from the key-
+      board.  Pressing the space bar allows the current macro to  con-
+      tinue  but does not flush any repeat count.  A ^G will abort the
+      current macro and also any remaining repeat  count.   Any  other
+      key  will simply abort the current macro but leave the remaining
+      repeat count uneffected.  This is useful for selectively execut-
+      ing the rest of a macro once part of it has been executed, as in
+      a search and replace operation.
+
+
+
+      6.16  ^XT  -- Toggle redisplay inside macro
+
+
+           The ^XT command causes the terminal screen  to  be  updated
+      after  each execution of a keyboard macro.  In normal operation,
+      the screen is not updated until after all requested  repetitions
+      of  a macro have been executed.  This can be very unsettling for
+      long running macros since the user  may  become  paranoid  about
+      what  the macro is doing to his files.  By refreshing the screen
+      after each execution, the results are displayed after each  exe-
+      cution of the macro, so that the user can follow the macros pro-
+      gress through the file.  The tradeoff is that  use  of  the  ^XT
+      command  signicantly  increases  macro execution time.  When not
+CONTROL X COMMANDS                                                      Page 6-5
+
+
+
+
+      inside a macro, the ^XT command is simply ignored.
+
+
+                                    NOTE
+
+           The ^XT command is not a normal EMACS command.   There
+           is  no  command currently defined in the EMACS command
+           set which supplies this function.
+
+
+
+
+
+      6.17  ^X(  -- Begin EMACS11 macro collection
+
+
+           The ^X( command tells EMACS11 that all  following  commands
+      until  the  matching ^X) command are to be collected in a buffer
+      and remembered as a macro.  Note that the commands ARE  EXECUTED
+      at the same time, so you can see the effects of the macro as you
+      define it.  This is very convenient for long complicated macros.
+      Hint:   be  sure  the  pointer ends up in a convenient place for
+      macro repetitions.  At the current time, macros CANNOT be  nest-
+      ed.   Nasty  things may occur if you try it.  Also note that the
+      status line mode word changes to "Learn" while you are inside  a
+      macro  definition.   Some  versions  of  EMACS  do this and some
+      don't.
+
+
+
+      6.18  ^X)  -- End EMACS11 macro collection
+
+
+           The ^X) command terminates an EMACS11 macro collection.  If
+      no macro collection is in progress, the command is ignored.
+
+
+
+      6.19  ^X*  -- View last EMACS11 macro
+
+
+
+
+      6.20  ^X=  -- Display location information
+
+
+           The ^X= command displays information about the current  lo-
+      cation  of the pointer.  At present, it displays the line number
+      that the pointer is located in, and the number of characters  to
+      the left of the pointer, in the current line.
+
+
+
+CONTROL X COMMANDS                                                      Page 6-6
+
+
+
+
+      6.21  ^X   -- Kill back to start of sentence
+
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      6.22  ^X$  -- Re-execute last TECO command
+
+
+           The ^X$ command re-executes the last TECO  command  defined
+      with  the  EMACS11  $$ command.  It will NOT re-execute the last
+      TECO command executed at the TECO level.
+
+
+
+
+
+
+                                   CHAPTER 7
+
+                               ESCAPE X COMMANDS
+
+
+
+      7.1  $XA -- Append marked region to file
+
+
+           The $XA command creates a  new  version  of  the  specified
+      file,  transfers  all  text from the old version to the new ver-
+      sion, and then appends the current marked region  to  that  file
+      before  closing  it.   If the specified file does not exist, the
+      command is ignored.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      7.2  $XC -- Enter/exit see-all mode
+
+
+           See-all mode is a display mode  in  which  ALL  characters,
+      both  printing  and  normally non-printing, are displayed on the
+      terminal.  The non-printing characters are displayed as  special
+      graphics  characters.   This is very handy for finding imbedding
+      non-printing characters in text files.  (Compilers  are  usually
+      good at that also, but not as nice about it.)
+
+
+
+      7.3  $XD -- Insert system date
+
+
+           The $XD command inserts the current system date at the  po-
+      inter  location in the form MM-DD-YY.  The pointer is left posi-
+      tioned after the inserted date.
+
+
+
+      7.4  $XI -- Insert a file at pointer
+
+
+           The $XI command inserts the specified file at  the  current
+      pointer  location.   In  order  to insure that a memory overflow
+      does not occur  it  effectively  performs  a  simultaneous  ^X^S
+      EMACS11  command,  so  an output file must be open.  If not, the
+      $XI command is simply ignored.
+
+
+ESCAPE X COMMANDS                                                       Page 7-2
+
+
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      7.5  $XL -- Load EMACS11 macro from file
+
+
+           The $XL command loads the EMACS11  macro  buffer  from  the
+      specified file.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      7.6  $XO -- View occurances of string
+
+
+           This command will view all lines, from the current  pointer
+      location to the end of the text buffer, which contain a specific
+      string.  As with other view commands, it is terminated with  any
+      single  keystroke.   If there are no occurances of the specified
+      string, the command is aborted.
+
+
+
+      7.7  $XP -- Prepend marked region to file
+
+
+           The $XP command creates a  new  version  of  the  specified
+      file,  writes  out  the  marked  region  to  that file, and then
+      transfers all text in the old version to the  new  version.   If
+      the specified file does not exist, the command is ignored.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+      7.8  $XR -- Replace a given string
+
+
+           The $XR command prompts for a string, and  it  replacement.
+      Then,  from  the  current  pointer  position  to  the end of the
+      buffer, the string is replaced.  The pointer is left  after  the
+      last replacement made, if any.
+
+
+
+ESCAPE X COMMANDS                                                       Page 7-3
+
+
+
+
+      7.9  $XS -- Save EMACS11 macro in file
+
+
+           The $XS command saves the current EMACS11 macro buffer con-
+      tents in the specified file.
+
+
+
+      7.10  $XT -- Insert system time
+
+
+           The $XT command inserts the current system  time  into  the
+      text  buffer in the format HH:MM:SS, where HH is in the range of
+      0-23, and both MM and SS are in the range of 0-59.
+
+
+
+      7.11  $XW -- Write marked region to file
+
+
+           The $XW command opens a new file with the specified  files-
+      pec  and  then  writes out the marked region to it.  The file is
+      then closed.  This is done independently of  any  other  primary
+      input or primary output files which may be open.
+
+
+                        *** NOT YET IMPLEMENTED ***
+
+
+
+
+
+
+                                   CHAPTER 8
+
+                                COMMAND SUMMARY
+
+
+
+      This chapter contains a summary, by  logical  function,  of  all
+      commands.
+COMMAND SUMMARY                                                         Page 8-2
+
+
+
+
+                           Pointer movement cmds:
+                           ---------------------
+       
+       
+        ^A    =>   Go to beginning of current line.
+       
+        ^B    =>   Go back one character.
+       
+        ^E    =>   Go to end of line.
+       
+        ^F    =>   Go forward one character.
+       
+        ^N    =>   Go to same place in next line.
+       
+        ^P    =>   Go to same place in previous line.
+       
+        ^V    =>   Move window down.
+       
+        $A    =>   Go backward to start of sentence.
+                   [Not yet implemented]
+       
+        $B    =>   Go back one word.
+       
+        $E    =>   Go forward to start of next sentence.
+                   [Not yet implemented]
+       
+        $F    =>   Go forward one word.
+       
+        $G    =>   Go to specified line number in current
+                   buffer.  (precede command with line number
+                   as $)
+       
+        $V    =>   Move window up.
+       
+        $[    =>   Go to beginning of paragraph.
+                   [Not yet implemented]
+       
+        $]    =>   Go to end of paragraph.
+                   [Not yet implemented]
+       
+        $<    =>   Go to beginning of buffer.
+       
+        $>    =>   Go to end of buffer.
+       
+        ^X^X  =>   Exchange mark and pointer
+       
+        ^X=   =>   Displays information about current position in
+                   buffer.
+COMMAND SUMMARY                                                         Page 8-3
+
+
+
+
+                            Buffer page commands
+                            --------------------
+       
+       
+        $N    =>   Write current buffer to output file, clear
+                   buffer, and read in next page from input file.
+       
+        ^XA   =>   Append next page to buffer. Inserts form
+                   feed if last read found a form feed.
+       
+        ^X^N  =>   Write all text in buffer above the current
+                   window to the output file and read in next
+                   page from input file.  (Useful for editing
+                   near page boundries.)
+       
+        ^XN   =>   Same as ^X ^N but does not read in next
+                   page.  Useful for making some room in the
+                   buffer.
+COMMAND SUMMARY                                                         Page 8-4
+
+
+
+
+                              Search commands:
+                              ----------------
+       
+       
+        ^S    =>   Incremental forward search.  Searches for
+                   string as each character is input.  Can only
+                   be exited with:
+       
+                     (1) An escape to signify stay at current
+                     location after string found.
+       
+                     (2) ^G to abort and return to original
+                     location.
+       
+                   Notes:
+       
+                     1. "DELETE" removes characters from
+                     search string.
+                     2.  When search string is null (empty) a 2nd
+                     ^S within a search operation uses the most
+                     recent successful search string.
+                     3.  A 2nd ^S  at any other time within a
+                     search operation finds the next occurance of
+                     the current search string.
+       
+        ^R    =>   Incremental reverse search.  Same as ^S
+                   except search progresses backwards.  Leaves
+                   pointer at beginning of string found.
+       
+                   [Not yet implemented]
+       
+       
+                   containing a specified string.
+COMMAND SUMMARY                                                         Page 8-5
+
+
+
+
+                         Kill and delete commands:
+                         -------------------------
+
+           Kill operations either initialize the kill buffer with  the
+      removed  text,  or  append  the removed text to the current kill
+      buffer contents, depending upon whether or not the  pointer  has
+      moved  since the last kill operation.  (appends if hasn't moved)
+      Delete operations remove the affected text and discard it.
+       
+        ^D    =>   Delete next character.
+       
+        ^K    =>   Kill to end of line / kill line
+                   terminator.
+       
+        ^W    =>   Kill marked region.
+       
+        ^Y    =>   Yank back last kill.  (insert text stored
+                   in kill buffer)
+       
+        $D    =>   Delete next word.   [Not yet implemented]
+       
+        $K    =>   Kill to end of sentence.
+                   [Not yet implemented]
+       
+        $W    =>   Copy region between mark and pointer to
+                   kill buffer, superceding existing text.
+       
+        $Y    =>   If used immediately after ^Y replaces
+                   the text just "unkilled" with the text
+                   that was the 2nd most recent victim.
+                   [Not yet implemented]
+       
+        $^Y   =>   Yanks (pulls) last defined TECO command
+                   into text buffer.
+       
+        $^W   =>   Append next kill to text already in kill
+                   buffer (if any).  This command is nullified
+                   by any pointer movement or text insertion.
+       
+        ^X^O  =>   Delete blank lines from current pointer to
+                   next non-blank line.
+                   [Not yet implemented]
+       
+        ^X    =>   Kill backwards to start of sentence.
+                   [Not yet implemented]
+       
+        "DELETE" =>  Delete character before pointer.
+          KEY
+COMMAND SUMMARY                                                         Page 8-6
+
+
+
+
+                             TECO related cmds:
+                             ------------------
+       
+       
+        $$    =>   Enter TECO commands.  Terminate with
+                   double $ or abort with ^G.
+       
+        MI$$  =>   Restart EMACS from TECO level.
+       
+        $^Y   =>   Insert last defined TECO command into
+       
+        $Z    =>   Return to TECO level. (can restart
+                   EMACS with MI$$
+       
+        $*    =>   View last TECO command
+       
+        ^X$   =>   Re-execute TECO command most recently entered
+                   with $$ command.
+       
+COMMAND SUMMARY                                                         Page 8-7
+
+
+
+
+                            Miscellaneous cmds:
+                            -------------------
+       
+        ^C    =>   Return to TECO level.  (can restart EMACS
+                   with MI$$)
+       
+        ^G    =>   *** THIS IS THE PANIC BUTTON ***
+                   Gets you out of almost anything as long as
+                   EMACS is not "hung".
+       
+        ^O    =>   Open blank line for insertion.
+       
+        ^Q    =>   Use next character as text.  (inserts cmds
+                   as text)
+       
+        $S    =>   Center text in current line.  Uses a default
+                   of 80 characters per line or can be preceded
+                   with an argument of form $ which
+                   defines number of characters in line.
+                   [Not yet implemented]
+       
+        $T    =>   Exchange words before and after pointer
+                   (does nothing if pointer is inside a word).
+                   [Not yet implemented]
+       
+        $%    =>   "Query replace" --- Prompt for search string
+                    and its replacement, then from current
+                    pointer to end of file, find string and query
+                    user as follows:
+                   (1) Space bar: go ahead and replace this
+                       occurance.
+                   (3) Any other key: don't replace, find next.
+       
+        ^XI   =>   Insert file at current pointer position.
+                   First executes a ^X^N to make room in the
+                   [Not yet implemented]
+       
+        $XC   =>   Enter/exit "see-all" mode (shows ALL char
+                   in a file, even non-printing ones, with
+                   special graphics)
+       
+        $XD   =>   Insert current date in text buffer in form
+                   MM-DD-YR
+       
+        $XR   =>   "Replace" --- Prompt for search string and
+                   its replacement, then from current pointer
+                   to end of buffer, replace all occurances.
+       
+COMMAND SUMMARY                                                         Page 8-8
+
+
+
+
+                        Miscellaneous cmds (CONT.):
+                        ---------------------------
+       
+       
+        $XT   =>   Insert current time in text buffer in form
+                   HH:MM:SS
+       
+        ^_    =>   "Help on tap" --- Interactive help processor.
+                   [Not yet implemented]
+       
+        $?    =>   "Describe" --- Describe function of next
+                   command without executing it.
+                   [Not yet implemented]
+COMMAND SUMMARY                                                         Page 8-9
+
+
+
+
+                           File related commands:
+                           ----------------------
+       
+       
+        ^X^R   =>   "Read file"   Reads in first page of a
+                    given file after closing the currently
+       
+        ^X^S   =>   "Save file"   Writes buffer and rest of
+                    currently open input file to currently
+                    open output file, closes and reopens
+                    file, and reads first page back in.
+       
+        ^X^V   =>   "Visit file"  Opens a given file for
+                    both input and output after closing
+                    the currently open output file (if any).
+       
+        ^X^W   =>   "Write file"  Sets output file to that
+                    specified, after closing any currently
+                    open output file (if any).
+       
+        ^Z^F   =>   "Get file name"  Insert most recently
+                    specified output filename into text
+                    buffer.
+       
+        ^Z^Z   =>   "Close files and exit"   Close all
+                    files and exit EMACS.
+COMMAND SUMMARY                                                        Page 8-10
+
+
+
+
+                            Keyboard macro cmds:
+                            --------------------
+       
+       
+        ^X(    =>   Start EMACS macro collection.
+       
+        ^X)    =>   Terminate EMACS macro collection.
+       
+        ^X*    =>   "View last macro" --- Clears screen
+                    and displays last defined EMACS macro.
+                    Pressing any key returns to edit mode.
+                    Note some "commands" such as CRLF
+                    are displayed in image mode.  This is
+                    built into TECO.
+       
+        ^XT    =>   "Toggle update" --- Forces screen update
+                    at current command inside a macro.  Useful
+                    for verifying macro is executing properly
+                    by viewing results at specific
+                    points, buts slows down execution
+                    considerably.
+       
+        ^XE    =>   Execute most recently collected EMACS macro.
+       
+        ^XQ    =>   When used inside a macro halts execution
+                    and waits for
+              
+                    (1) press space bar to continue with
+                    (2) use ^G to abort this macro and all
+                        macro repeats pending.
+                    (3) press any other key to exit current
+                        macro, without effecting any pending
+                        macro repeats.
+       
+        $XS    =>   "Save macro" --- Saves current EMACS macro
+                    in a specified file.  Prompts for file name.
+                    [Not yet implemented]
+       
+        $XL    =>   "Load macro" --- Loads EMACS macro from a
+                    specified file.   Prompts for file name.
+                    [Not yet implemented]
+       
+COMMAND SUMMARY                                                        Page 8-11
+
+
+
+
+                        The "mark" and region cmds:
+                        ---------------------------
+       
+       
+        $H     =>   Mark paragraph.  Puts mark at beginning of
+                    paragraph, pointer at end.
+                    [Not yet implemented]
+       
+        ^X^P   =>   Mark page ---  Put mark at top of page,
+                    defined to be immediately after first form
+                    feed backwards from current pointer, or top
+                    of buffer, whichever is first.
+                    Put pointer at bottom of page, defined to
+                    be immediately after next form feed forwards
+                    from current pointer, or bottom of buffer,
+                    whichever is first.
+                    [Not yet implemented]
+       
+        ^X^X   =>   Exchange mark and pointer; useful to verify
+                    where current region is.
+       
+        $@     =>   Set mark at current pointer (is EMACS ^@).
+       
+        $XA    =>   Append currently defined region to an
+                    existing file. Prompts for file name.
+                    [Not yet implemented]
+       
+        $XP    =>   Prepend currently defined region to an
+                    existing file.  Prompts for file name.
+                    [Not yet implemented]
+       
+        $XW    =>   Write currently defined region to a new
+                    file.  Prompts for file name.
+                    [Not yet implemented]
+       
+COMMAND SUMMARY                                                        Page 8-12
+
+
+
+
+                           Case conversion cmds:
+                           ---------------------
+       
+       
+         $C    =>   Capitalize next word.
+                    [Not yet implemented]
+       
+         $L    =>   Lower case next word.
+                    [Not yet implemented]
+       
+         $U    =>   Upper case next word.
+                    [Not yet implemented]
+       
+         ^X^L  =>   Lower case marked region.
+       
+         ^X^U  =>   Upper case marked region.
+COMMAND SUMMARY                                                        Page 8-13
+
+
+
+
+                                Misc. notes:
+                                ------------
+
+      1.  Most commands can be preceded with a  repeat  count  of  the
+          form  $.  Even "commands" which are self-insertions,
+          I.E.  $20H inserts 20 "H"s in text buffer.
+
+      2.  Commands which "view information" (such as $ X O  or  ^X  =)
+          wait  for  the  user  to  press  any key and then return the
+          screen to its normal window mode into the text buffer.   The
+          character  input by the single key stroke is discarded.  The
+          text buffer is not affected by the view operation.
