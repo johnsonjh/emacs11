@@ -40,15 +40,15 @@ File | Size | Usage
 
 - Some possibly helpful hints.
 
-   * I seem to remember that the **TECO** source was modified slightly to look for `teco.tec` (or whatever you want to call the compacted macro file) in a special startup directory.  Thus, when the **TECO** executable was copied to `ema`, and invoked with the name `ema`, it would automatically start up with the compacted macro file, otherwise, you would get normal **TECO**.  It is possible to load the compacted macro file manually and start it up by hand each time, but I forget the exact procedure.
+  - I seem to remember that the **TECO** source was modified slightly to look for `teco.tec` (or whatever you want to call the compacted macro file) in a special startup directory.  Thus, when the **TECO** executable was copied to `ema`, and invoked with the name `ema`, it would automatically start up with the compacted macro file, otherwise, you would get normal **TECO**.  It is possible to load the compacted macro file manually and start it up by hand each time, but I forget the exact procedure.
 
-   * I think there are a couple terminal dependencies wired into the macro package, one for *VT52*, and one for *VT100*.
+  - I think there are a couple terminal dependencies wired into the macro package, one for *VT52*, and one for *VT100*.
 
-   * There were some problems with *VMS* trapping certain control characters that I was never able to completely fix.
+  - There were some problems with *VMS* trapping certain control characters that I was never able to completely fix.
 
-   * The macro sources are in **_Structured_ TECO** (and I'll bet you thought **TECO** was an editor instead of a programming language!!).
+  - The macro sources are in **_Structured_ TECO** (and I'll bet you thought **TECO** was an editor instead of a programming language!!).
 
-   * Note that there are a couple embedded *ESCAPE* characters near the end of the macro source files `emacs11.tec` and `emacs.src`.
+  - Note that there are a couple embedded *ESCAPE* characters near the end of the macro source files `emacs11.tec` and `emacs.src`.
 
 ## Conclusiom
 
