@@ -11,7 +11,7 @@
 2. The following are considered to be a minimal usable distribution suitable for transmission over the net.  Note that there are two distinct flavors, one for *VAX* using *VT100*, and one for *PDP-11* using *VT52*.
 
 File | Size | Usage
-:---: | ---: | :---
+---: | ---: | :---:
 `README` | | (_This file_.)
 `emacs.txt` | 10,659 | *Quick Reference* guide to **EMACS-11** commands.
 `emacs.doc` | 65,034 | **EMACS-11** documentation, ready for printing.
@@ -25,7 +25,7 @@ File | Size | Usage
 3. The following files are available in the tape distribution only:
 
 File | Size | Usage
-:---: | ---: | :---
+---: | ---: | :---:
 `MITemacs.doc` | 666,989 | Machine readable form of **EMACS** documentation for the *TOPS-20* version of **EMACS**.<br/><br/>(*Available on tape distribution only*.)
 `ema.odl` | 1,183 | Some kind of command file for one of the DEC operating systems.<br/><br/>(I told you I was rusty!!!)
 `ema.tkb` | 2,778 | Command file for building **TECO** under *RSX-11* and/or *VAX*/*VMS*.
