@@ -10,17 +10,17 @@ File | Size | Usage
 `README` | | (_This file_.)
 `emacs.txt` | 10,659 | *Quick Reference* guide to **EMACS-11** commands.
 `emacs.doc` | 65,034 | **EMACS-11** documentation, ready for printing.
-`emacs.src` | 61,032 | **EMACS-11** macro source file.  <br/>Use `vaxbld.tec` to compact into an executable macro file `emacs.tec`. <br/>(_Use on *VAX*/*VMS* with *VT100*'s_.)
-`vaxbld.tec` | 1,615 | Used to compact `emacs.src` file into executable macro file `emacs.tec`. <br/>(_Use on *VAX*/*VMS* with *VT100*_.)
-`emacs11.tec` | 61,166 | Slightly modified version of `emacs.src`. <br/>Use `bldemacs.tec` to compact into executable macro file `teco.tec`. <br/>(_Use on *PDP-11*'s with *VT52*'s_.)
-`bldemacs.tec` | 1,558 | **TECO** command file to compact the **EMACS-11** macro source file `emacs11.tec` into an executable **TECO** macro file `teco.tec` by removing all extraneous characters. <br/>(_Use on *PDP-11*'s_.)
+`emacs.src` | 61,032 | **EMACS-11** macro source file.  <br/><br/>Use `vaxbld.tec` to compact into an executable macro file `emacs.tec`. <br/><br/>(_Use on *VAX*/*VMS* with *VT100*'s_.)
+`vaxbld.tec` | 1,615 | Used to compact `emacs.src` file into executable macro file `emacs.tec`. <br/><br/>(_Use on *VAX*/*VMS* with *VT100*_.)
+`emacs11.tec` | 61,166 | Slightly modified version of `emacs.src`. <br/><br/>Use `bldemacs.tec` to compact into executable macro file `teco.tec`. <br/><br/>(_Use on *PDP-11*'s with *VT52*'s_.)
+`bldemacs.tec` | 1,558 | **TECO** command file to compact the **EMACS-11** macro source file `emacs11.tec` into an executable **TECO** macro file `teco.tec` by removing all extraneous characters. <br/><br/>(_Use on *PDP-11*'s_.)
 
 3. The following files are available in the tape distribution only:
 
 File | Size | Usage
 --- | --- | ---
-`MITemacs.doc` | 666,989 | Machine readable form of **EMACS** documentation for the *TOPS-20* version of **EMACS**. <br/>(*Available on tape distribution only*.)
-`ema.odl` | 1,183 | Some kind of command file for one of the DEC operating systems. <br/>(I told you I was rusty!!!)
+`MITemacs.doc` | 666,989 | Machine readable form of **EMACS** documentation for the *TOPS-20* version of **EMACS**. <br/><br/>(*Available on tape distribution only*.)
+`ema.odl` | 1,183 | Some kind of command file for one of the DEC operating systems. <br/><br/>(I told you I was rusty!!!)
 `ema.tkb` | 2,778 | Command file for building **TECO** under *RSX-11* and/or *VAX*/*VMS*
 `emacs.rno` | 54,116 | **EMACS-11** manual in *RUNOFF* form.
 `emacs.tec` | 4,941 | Compacted form of `emacs.src`
