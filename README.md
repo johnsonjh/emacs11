@@ -56,7 +56,7 @@ File | Size | Usage
 
   * There were some problems with *VMS* trapping certain control characters that I was never able to completely fix.
 
-  * The macro sources are in **_Structured_ TECO** (and I'll bet you thought **TECO** was an editor instead of a programming language!!).
+  * The macro sources are in "**_Structured_ TECO**" (and I'll bet you thought **TECO** was an editor instead of a programming language!!).
 
   * Note that there are a couple embedded *ESCAPE* characters near the end of the macro source files `emacs11.tec` and `emacs.src`.
 
